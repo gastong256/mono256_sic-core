@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "00000000-0000-0000-0000-000000000001",
-    "name": "__PROJECT_NAME__",
-    "description": "__DESCRIPTION__",
+    "name": "SIC API",
+    "description": "Implementation of accounting system based in hordak and following SIC (Andrisani) definitions.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

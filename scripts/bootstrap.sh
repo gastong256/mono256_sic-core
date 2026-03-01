@@ -103,22 +103,22 @@ replace_in_files() {
     done
 }
 
-replace_in_files "__PROJECT_NAME__"      "$PROJECT_NAME"
-replace_in_files "__PROJECT_SLUG__"      "$PROJECT_SLUG"
-replace_in_files "__SERVICE_NAME__"      "$SERVICE_NAME"
-replace_in_files "__OWNER__"             "$OWNER"
-replace_in_files "__DESCRIPTION__"       "$DESCRIPTION"
-replace_in_files "__PORT__"              "$PORT"
-replace_in_files "__DJANGO_SECRET_KEY__" "$DJANGO_SECRET_KEY"
+replace_in_files "SIC API"      "$PROJECT_NAME"
+replace_in_files "sic_core"      "$PROJECT_SLUG"
+replace_in_files "sic_core"      "$SERVICE_NAME"
+replace_in_files "gastong256"             "$OWNER"
+replace_in_files "Implementation of accounting system based in hordak and following SIC (Andrisani) definitions."       "$DESCRIPTION"
+replace_in_files "8000"              "$PORT"
+replace_in_files "@qUUwZMC07hBh__DJANGO_SECRET_KEY__404aTm#HbUfcgtj__DJANGO_SECRET_KEY__zrUqWB%Q4lWOKhranF@X" "$DJANGO_SECRET_KEY"
 
 # ── Rename postman files ──────────────────────────────────────────────────────
-if ls postman/__PROJECT_SLUG__*.json &>/dev/null 2>&1; then
+if ls postman/sic_core*.json &>/dev/null 2>&1; then
     :  # Already replaced above — nothing to rename
 fi
 
-# Rename any remaining __PROJECT_SLUG__ in filenames
-find postman/ -name "*__PROJECT_SLUG__*" | while IFS= read -r f; do
-    new_name="${f//__PROJECT_SLUG__/$PROJECT_SLUG}"
+# Rename any remaining sic_core in filenames
+find postman/ -name "*sic_core*" | while IFS= read -r f; do
+    new_name="${f//sic_core/$PROJECT_SLUG}"
     mv "$f" "$new_name"
     echo "  renamed: $f → $new_name"
 done
@@ -127,7 +127,7 @@ done
 if [[ ! -f .env ]]; then
     cp .env.example .env
     # Patch the generated secret key directly into .env
-    sed -i "s|__DJANGO_SECRET_KEY__|${DJANGO_SECRET_KEY}|g" .env
+    sed -i "s|@qUUwZMC07hBh__DJANGO_SECRET_KEY__404aTm#HbUfcgtj__DJANGO_SECRET_KEY__zrUqWB%Q4lWOKhranF@X|${DJANGO_SECRET_KEY}|g" .env
     echo "Created .env from .env.example"
 fi
 
@@ -148,7 +148,7 @@ if command -v uv &>/dev/null; then
 fi
 
 # ── Stamp sentinel ────────────────────────────────────────────────────────────
-echo "__PROJECT_SLUG__" > "$SENTINEL"
+echo "sic_core" > "$SENTINEL"
 echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$SENTINEL"
 
 echo ""

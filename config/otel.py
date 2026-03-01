@@ -23,7 +23,7 @@ def setup_otel() -> None:
             "OpenTelemetry packages not installed. Run: uv sync --extra otel"
         ) from exc
 
-    service_name = os.environ.get("OTEL_SERVICE_NAME", "__SERVICE_NAME__")
+    service_name = os.environ.get("OTEL_SERVICE_NAME", "sic_core")
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 
     resource = Resource.create({SERVICE_NAME: service_name})

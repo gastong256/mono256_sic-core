@@ -8,7 +8,7 @@ DEBUG = False
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
-        default="postgres://postgres:postgres@localhost:5432/__PROJECT_SLUG___test",
+        default="postgres://postgres:postgres@localhost:5432/sic_core_test",
     ),
 }
 

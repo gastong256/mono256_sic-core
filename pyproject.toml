@@ -1,11 +1,11 @@
 [project]
-name = "__PROJECT_SLUG__"
+name = "sic_core"
 version = "0.1.0"
-description = "__DESCRIPTION__"
+description = "Implementation of accounting system based in hordak and following SIC (Andrisani) definitions."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "__OWNER__" }]
+authors = [{ name = "gastong256" }]
 
 dependencies = [
     "django>=5.1,<6",

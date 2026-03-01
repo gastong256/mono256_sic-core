@@ -3,7 +3,7 @@ from .base import SECRET_KEY, env
 
 _UNSAFE_DEFAULTS = {
     "unsafe-default-do-not-use-in-production",
-    "__DJANGO_SECRET_KEY__",
+    "@qUUwZMC07hBh__DJANGO_SECRET_KEY__404aTm#HbUfcgtj__DJANGO_SECRET_KEY__zrUqWB%Q4lWOKhranF@X",
     "",
 }
 if not SECRET_KEY or SECRET_KEY in _UNSAFE_DEFAULTS:

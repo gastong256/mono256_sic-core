@@ -1,8 +1,8 @@
-# __PROJECT_NAME__
+# SIC API
 
-> __DESCRIPTION__
+> Implementation of accounting system based in hordak and following SIC (Andrisani) definitions.
 
-**Owner:** __OWNER__
+**Owner:** gastong256
 
 ---
 
@@ -51,25 +51,25 @@ make migrate
 make run
 ```
 
-The API is now available at `http://localhost:__PORT__`.
+The API is now available at `http://localhost:8000`.
 
 ```bash
 # Liveness check
-curl http://localhost:__PORT__/healthz
+curl http://localhost:8000/healthz
 
 # Readiness check
-curl http://localhost:__PORT__/readyz
+curl http://localhost:8000/readyz
 
 # Ping
-curl http://localhost:__PORT__/api/v1/ping
+curl http://localhost:8000/api/v1/ping
 
 # Create an item
-curl -s -X POST http://localhost:__PORT__/api/v1/items \
+curl -s -X POST http://localhost:8000/api/v1/items \
   -H "Content-Type: application/json" \
   -d '{"name": "Widget", "description": "A useful widget."}' | python3 -m json.tool
 
 # Retrieve an item (replace <id> with the UUID from above)
-curl http://localhost:__PORT__/api/v1/items/<id>
+curl http://localhost:8000/api/v1/items/<id>
 ```
 
 ---
@@ -178,7 +178,7 @@ OTel is disabled by default with zero overhead when off. To enable:
 uv sync --extra otel
 
 export OTEL_ENABLED=true
-export OTEL_SERVICE_NAME=__SERVICE_NAME__
+export OTEL_SERVICE_NAME=sic_core
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 ```
 

@@ -111,11 +111,11 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "__PROJECT_NAME__",
-    "DESCRIPTION": "__DESCRIPTION__",
+    "TITLE": "SIC API",
+    "DESCRIPTION": "Implementation of accounting system based in hordak and following SIC (Andrisani) definitions.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "CONTACT": {"name": "__OWNER__"},
+    "CONTACT": {"name": "gastong256"},
     "SCHEMA_PATH_PREFIX": "/api/v[0-9]",
 }
 

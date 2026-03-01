@@ -33,10 +33,10 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
-EXPOSE __PORT__
+EXPOSE 8000
 
 CMD ["gunicorn", \
-     "--bind", "0.0.0.0:__PORT__", \
+     "--bind", "0.0.0.0:8000", \
      "--workers", "2", \
      "--worker-class", "sync", \
      "--timeout", "30", \

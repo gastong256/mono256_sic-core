@@ -50,7 +50,7 @@ collectstatic: ## Collect static files
 	$(MANAGE) collectstatic --noinput
 
 docker-build: ## Build production Docker image
-	docker build -t __SERVICE_NAME__:local .
+	docker build -t sic_core:local .
 
 docker-up: ## Start docker-compose services
 	docker compose up -d

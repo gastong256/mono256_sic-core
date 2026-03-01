@@ -3,15 +3,15 @@ services:
     build:
       context: .
       target: builder
-    command: uv run python manage.py runserver 0.0.0.0:${PORT:-__PORT__}
+    command: uv run python manage.py runserver 0.0.0.0:${PORT:-8000}
     volumes:
       - .:/app
     working_dir: /app
     ports:
-      - "${PORT:-__PORT__}:${PORT:-__PORT__}"
+      - "${PORT:-8000}:${PORT:-8000}"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.local
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/__PROJECT_SLUG__
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/sic_core
       DJANGO_SECRET_KEY: local-dev-secret-key-change-me
       DJANGO_DEBUG: "true"
       LOG_LEVEL: DEBUG
@@ -28,7 +28,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: __PROJECT_SLUG__
+      POSTGRES_DB: sic_core
     ports:
       - "5432:5432"
     volumes:
