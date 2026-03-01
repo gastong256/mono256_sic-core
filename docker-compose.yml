@@ -1,0 +1,50 @@
+services:
+  web:
+    build:
+      context: .
+      target: builder
+    command: uv run python manage.py runserver 0.0.0.0:${PORT:-__PORT__}
+    volumes:
+      - .:/app
+    working_dir: /app
+    ports:
+      - "${PORT:-__PORT__}:${PORT:-__PORT__}"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/__PROJECT_SLUG__
+      DJANGO_SECRET_KEY: local-dev-secret-key-change-me
+      DJANGO_DEBUG: "true"
+      LOG_LEVEL: DEBUG
+      JSON_LOGS: "false"
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: __PROJECT_SLUG__
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles:
+      - redis
+
+volumes:
+  postgres_data:
