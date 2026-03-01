@@ -1,9 +1,18 @@
 from typing import Any
 
 from rest_framework import exceptions, status
+from rest_framework.exceptions import APIException
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
+
+
+class ConflictError(APIException):
+    """HTTP 409 Conflict — raised when a resource state prevents the operation."""
+
+    status_code = 409
+    default_detail = "Resource conflict."
+    default_code = "conflict"
 
 
 def _get_error_code(exc: Exception) -> str:

@@ -17,6 +17,8 @@ dependencies = [
     "gunicorn>=22",
     "structlog>=24",
     "whitenoise>=6",
+    "django-hordak>=2.0.0",
+    "djangorestframework-simplejwt>=5.5.1",
 ]
 
 [project.optional-dependencies]

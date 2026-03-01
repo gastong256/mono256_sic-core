@@ -1,17 +1,39 @@
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+_status_response = inline_serializer(
+    name="StatusResponse",
+    fields={"status": serializers.CharField()},
+)
+
 
 class LivenessView(APIView):
+    @extend_schema(
+        operation_id="liveness",
+        summary="Liveness probe",
+        responses={200: _status_response},
+        tags=["health"],
+    )
     def get(self, request: Request) -> Response:
         return Response({"status": "ok"})
 
 
 class ReadinessView(APIView):
+    @extend_schema(
+        operation_id="readiness",
+        summary="Readiness probe",
+        responses={
+            200: _status_response,
+            503: OpenApiResponse(description="Database unavailable"),
+        },
+        tags=["health"],
+    )
     def get(self, request: Request) -> Response:
         from django.db import connection
 
@@ -33,4 +55,7 @@ urlpatterns = [
     path("api/redoc", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Versioned API
     path("api/v1/", include("apps.example.api.urls")),
+    path("api/v1/auth/", include("apps.users.api.urls", namespace="users")),
+    path("api/v1/", include("apps.companies.api.urls", namespace="companies")),
+    path("api/v1/", include("apps.accounts.api.urls", namespace="accounts")),
 ]

@@ -1,6 +1,8 @@
 # SIC API
 
-> Implementation of accounting system based in hordak and following SIC (Andrisani) definitions.
+> Sistema de Información Contable — an educational double-entry accounting system
+> based on [django-hordak](https://github.com/adamchainz/django-hordak) and the
+> SIC 1 - Angrisani textbook (Argentine accounting).
 
 **Owner:** gastong256
 
@@ -8,31 +10,54 @@
 
 ## Table of Contents
 
-- [Using This Template](#using-this-template)
+- [Overview](#overview)
+- [Roles and Permissions](#roles-and-permissions)
 - [Quickstart](#quickstart)
-- [Local Dev Workflow](#local-dev-workflow)
-- [API Docs](#api-docs)
+- [Installation and Configuration](#installation-and-configuration)
+- [Loading the Chart of Accounts](#loading-the-chart-of-accounts)
+- [API Reference](#api-reference)
+  - [Authentication](#authentication)
+  - [Companies](#companies)
+  - [Accounts](#accounts)
 - [Project Structure](#project-structure)
-- [Configuration](#configuration)
+- [Local Dev Workflow](#local-dev-workflow)
 - [Observability](#observability)
-- [Multi-tenancy](#multi-tenancy)
 - [OpenTelemetry](#opentelemetry)
-- [Releases & Conventional Commits](#releases--conventional-commits)
-- [Contributing](#contributing)
+- [Releases and Conventional Commits](#releases-and-conventional-commits)
 
 ---
 
-## Using This Template
+## Overview
 
-1. Click **"Use this template"** on GitHub to create a new repository.
-2. Clone your new repository.
-3. Run the bootstrap script:
+SIC is a backend-only Django REST API that simulates an accounting studio environment
+for high school students. Each student can manage one or more fictional companies and
+practice double-entry bookkeeping using a predefined Argentine chart of accounts.
 
-```bash
-make init
-```
+**Key design decisions:**
 
-`make init` prompts for project details, replaces all placeholders, renames files, installs dependencies, and sets up pre-commit hooks. After it completes the project is immediately runnable.
+| Concern | Approach |
+|---------|----------|
+| Double-entry bookkeeping | `django-hordak` (MPTTModel) |
+| Authentication | JWT via `djangorestframework-simplejwt` |
+| Account tree | 3 levels: rubros (L0) → colectivas (L1) → subcuentas (L2) |
+| Currency | Argentine Peso (ARS) |
+| Permissions | Teachers via Django Admin; Students via REST API |
+
+---
+
+## Roles and Permissions
+
+| Role | Identified by | Access |
+|------|--------------|--------|
+| **Teacher** | `is_staff=True` | Django Admin — full access to all companies, all accounts, all users |
+| **Student** | `is_staff=False` | REST API only — manages own companies and level-3 accounts |
+
+### Detailed permission rules
+
+- **Companies:** Students see and manage only their own companies. Teachers see all.
+- **Level-0/1 accounts (rubros, colectivas):** Global, read-only for students. Teachers can add/edit via Admin.
+- **Level-2 accounts (subcuentas):** Students create/edit/delete within their own companies.
+- **Deleting accounts:** Blocked (409 Conflict) if the account has transaction legs in hordak.
 
 ---
 
@@ -41,35 +66,403 @@ make init
 **Prerequisites:** Python 3.12+, [uv](https://docs.astral.sh/uv/), Docker + Docker Compose.
 
 ```bash
-# 1. Start the database
+# 1. Start the PostgreSQL database
 docker compose up -d postgres
 
-# 2. Apply migrations
+# 2. Install dependencies
+uv sync
+
+# 3. Apply migrations (hordak, users, companies, …)
 make migrate
 
-# 3. Run the dev server
+# 4. Load the base chart of accounts
+uv run python manage.py load_chart_of_accounts
+
+# 5. Create a superuser (teacher)
+uv run python manage.py createsuperuser
+
+# 6. Run the dev server
 make run
 ```
 
 The API is now available at `http://localhost:8000`.
+Interactive docs: `http://localhost:8000/api/docs`
+
+---
+
+## Installation and Configuration
+
+### Environment variables
+
+Copy `.env.example` to `.env` and fill in the values:
 
 ```bash
-# Liveness check
-curl http://localhost:8000/healthz
+cp .env.example .env
+```
 
-# Readiness check
-curl http://localhost:8000/readyz
+Required variables:
 
-# Ping
-curl http://localhost:8000/api/v1/ping
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `DJANGO_SETTINGS_MODULE` | `config.settings.local` | Settings file to use |
+| `DJANGO_SECRET_KEY` | `change-me` | Django secret key |
+| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/sic_core` | PostgreSQL connection string |
 
-# Create an item
-curl -s -X POST http://localhost:8000/api/v1/items \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Widget", "description": "A useful widget."}' | python3 -m json.tool
+> **Note:** `django-hordak` requires PostgreSQL. SQLite is not supported because
+> hordak uses a PostgreSQL trigger to compute `full_code` on the Account model.
 
-# Retrieve an item (replace <id> with the UUID from above)
-curl http://localhost:8000/api/v1/items/<id>
+### Settings profiles
+
+| Value | Use |
+|-------|-----|
+| `config.settings.local` | Local development (debug on, JSON logs off) |
+| `config.settings.test` | Test runner (set automatically by `pyproject.toml`) |
+| `config.settings.prod` | Production (strict security headers, HTTPS) |
+
+---
+
+## Loading the Chart of Accounts
+
+Run the management command after each fresh database setup:
+
+```bash
+uv run python manage.py load_chart_of_accounts
+```
+
+The command is **idempotent** — running it multiple times never creates duplicates.
+
+It loads:
+
+| Code | Name | Type |
+|------|------|------|
+| 1 | ACTIVO | AS (Asset) |
+| 1.01 | Caja | — |
+| 1.02 | Valores a Depositar | — |
+| … (17 colectivas total) | | |
+| 2 | PASIVO | LI (Liability) |
+| 2.01 | Proveedores | — |
+| … (6 colectivas) | | |
+| 3 | PATRIMONIO NETO | EQ (Equity) |
+| 4 | RESULTADOS NEGATIVOS | EX (Expense) |
+| 5 | RESULTADOS POSITIVOS | IN (Income) |
+
+Account codes use the hordak/MPTT local code convention:
+- Level-0 root code: `"1"`, `"2"`, … → `full_code = "1"`, `"2"`, …
+- Level-1 local code: `".01"`, `".02"`, … → `full_code = "1.01"`, `"1.02"`, …
+- Level-2 local code: `".01"`, `".02"`, … → `full_code = "1.04.01"`, `"2.01.03"`, …
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:8000/api/v1`
+
+Interactive docs: `GET /api/docs` (Swagger UI) or `GET /api/redoc`.
+
+---
+
+### Authentication
+
+JWT tokens are required for all SIC endpoints.
+
+#### Obtain token
+
+```http
+POST /api/v1/auth/token/
+Content-Type: application/json
+
+{
+  "username": "student1",
+  "password": "password123"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### Refresh token
+
+```http
+POST /api/v1/auth/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Include the access token in all subsequent requests:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+---
+
+### Companies
+
+Students act as an accounting firm and can manage multiple companies.
+
+#### List companies
+
+```http
+GET /api/v1/companies/
+Authorization: Bearer <token>
+```
+
+Students see only their own companies. Teachers see all.
+
+Response `200 OK`:
+
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Ferretería El Clavo",
+      "tax_id": "20-12345678-9",
+      "owner_username": "student1",
+      "account_count": 3,
+      "created_at": "2025-01-15T10:30:00Z",
+      "updated_at": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### Create company
+
+```http
+POST /api/v1/companies/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Ferretería El Clavo",
+  "tax_id": "20-12345678-9"
+}
+```
+
+Response `201 Created` — same format as list item above.
+
+#### Retrieve company
+
+```http
+GET /api/v1/companies/{id}/
+Authorization: Bearer <token>
+```
+
+Response `200 OK` — same format as list item.
+
+#### Update company
+
+```http
+PUT /api/v1/companies/{id}/
+PATCH /api/v1/companies/{id}/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Ferretería El Clavo SRL",
+  "tax_id": "30-12345678-9"
+}
+```
+
+Response `200 OK` — updated company.
+
+#### Delete company
+
+```http
+DELETE /api/v1/companies/{id}/
+Authorization: Bearer <token>
+```
+
+Response `204 No Content`.
+
+---
+
+### Accounts
+
+#### Get global chart of accounts
+
+Returns levels 1 and 2 (global, no company-specific subcuentas).
+
+```http
+GET /api/v1/accounts/chart/
+Authorization: Bearer <token>
+```
+
+Response `200 OK`:
+
+```json
+[
+  {
+    "id": 1,
+    "code": "1",
+    "name": "ACTIVO",
+    "type": "AS",
+    "level": 0,
+    "is_leaf": false,
+    "children": [
+      {
+        "id": 2,
+        "code": "1.01",
+        "name": "Caja",
+        "type": "AS",
+        "level": 1,
+        "is_leaf": true,
+        "children": []
+      },
+      {
+        "id": 3,
+        "code": "1.02",
+        "name": "Valores a Depositar",
+        "type": "AS",
+        "level": 1,
+        "is_leaf": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "code": "2",
+    "name": "PASIVO",
+    "type": "LI",
+    "level": 0,
+    "is_leaf": false,
+    "children": [...]
+  }
+]
+```
+
+#### Get company chart of accounts
+
+Returns levels 1 and 2 (global) plus level-3 subcuentas belonging to the company.
+
+```http
+GET /api/v1/accounts/company/{company_id}/
+Authorization: Bearer <token>
+```
+
+Response `200 OK` — same tree format, with level-2 `children` populated per company.
+
+#### Create level-3 account
+
+```http
+POST /api/v1/accounts/company/{company_id}/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Caja Principal",
+  "code": "1.01.01",
+  "parent_id": 2
+}
+```
+
+Field rules:
+- `code`: full code in `X.XX.XX` format; must be globally unique in hordak
+- `parent_id`: ID of a level-1 (colectiva) account; type and currency are inherited
+- Only students who own the company (or teachers) can create accounts
+
+Response `201 Created`:
+
+```json
+{
+  "id": 42,
+  "code": "1.01.01",
+  "name": "Caja Principal",
+  "type": "AS",
+  "level": 2,
+  "is_leaf": true,
+  "children": []
+}
+```
+
+Common errors:
+
+| Status | Cause |
+|--------|-------|
+| `400` | Invalid code format, duplicate code, parent not level-1 |
+| `403` | Student accessing another student's company |
+| `404` | Company or parent account not found |
+
+#### Update level-3 account
+
+```http
+PATCH /api/v1/accounts/company/{company_id}/{account_id}/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Caja Chica",
+  "code": "1.01.02"
+}
+```
+
+Both fields are optional, but at least one must be provided.
+
+Response `200 OK` — updated account node.
+
+#### Delete level-3 account
+
+```http
+DELETE /api/v1/accounts/company/{company_id}/{account_id}/
+Authorization: Bearer <token>
+```
+
+Response `204 No Content`.
+
+Error `409 Conflict` — if the account has existing transaction legs in hordak:
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "message": "Cannot delete account with existing transactions. Reverse the transactions first.",
+    "detail": null
+  }
+}
+```
+
+---
+
+## Project Structure
+
+```
+apps/
+  common/             Shared abstract models (TimeStampedModel)
+  users/              Custom User model (AbstractUser, no extra fields)
+    api/              JWT token endpoints
+  companies/          Company, CompanyAccount models + full REST API
+    api/              ViewSet, serializers, permissions
+    management/
+      commands/       load_chart_of_accounts
+  accounts/           Wraps hordak.Account — no own DB models
+    api/              Chart endpoints, account create/update/delete
+  example/            Reference app (ping, items)
+config/
+  settings/           base / local / test / prod
+  middleware/         RequestID + Tenant middleware
+  exceptions.py       DRF exception handler + ConflictError (409)
+  logging.py          structlog configuration
+  otel.py             Optional OpenTelemetry setup
 ```
 
 ---
@@ -84,95 +477,28 @@ make test          # pytest
 make test-cov      # pytest + coverage report
 make shell         # Django shell
 make migrate       # apply migrations
-make makemigrations ARGS="example"  # create migrations for an app
 make pre-commit    # run all pre-commit hooks
 ```
 
-**Adding a new app:**
+Load the chart of accounts after a fresh DB:
 
 ```bash
-uv run python manage.py startapp myapp apps/myapp
+uv run python manage.py load_chart_of_accounts
 ```
-
-Follow the pattern in `apps/example/` — add `services.py`, `selectors.py`, `api/`.
-
----
-
-## API Docs
-
-| URL | Description |
-|-----|-------------|
-| `/api/openapi.json` | OpenAPI 3.1 schema |
-| `/api/docs` | Swagger UI |
-| `/api/redoc` | Redoc |
-
-The Postman collection and environment are in `postman/`.
-
----
-
-## Project Structure
-
-```
-apps/               Bounded-context Django apps
-  example/          Reference implementation — copy this pattern for new apps
-    api/            HTTP layer: serializers, views, urls
-    models.py       Data model
-    services.py     Write-side business logic
-    selectors.py    Read-side query logic
-config/             Django project (not an app)
-  middleware/       RequestID + Tenant middleware
-  settings/         base / local / test / prod
-  context.py        ContextVars: request_id, tenant_id
-  logging.py        structlog configuration
-  otel.py           Optional OpenTelemetry setup
-  exceptions.py     DRF custom exception handler
-docs/adr/           Architecture Decision Records
-tests/              Top-level pytest suite
-scripts/            Tooling scripts
-postman/            Postman collection + environment
-```
-
----
-
-## Configuration
-
-All configuration is environment-based (12-factor). Copy `.env.example` to `.env` and adjust values.
-
-`DJANGO_SETTINGS_MODULE` selects the settings file:
-
-| Value | Use |
-|-------|-----|
-| `config.settings.local` | Local development (default) |
-| `config.settings.test` | Test runner (set in `pyproject.toml`) |
-| `config.settings.prod` | Production |
-
-See `.env.example` for all supported variables.
 
 ---
 
 ## Observability
 
-See [docs/observability.md](docs/observability.md) for full details.
-
-- **Logs**: JSON to stdout (structlog). Every record includes `request_id` and `tenant_id`.
-- **Request ID**: `X-Request-ID` header, auto-generated if missing, echoed in response.
-- **Health**: `GET /healthz` (liveness), `GET /readyz` (readiness + DB check).
-
----
-
-## Multi-tenancy
-
-See [ADR 0002](docs/adr/0002-multitenancy-strategy.md) for the full strategy.
-
-- Send `X-Tenant-ID: my-tenant` in request headers; defaults to `"public"`.
-- `tenant_id` appears in all log records automatically.
-- No data-layer isolation by default — extend `services.py` and querysets as needed.
+- **Logs:** JSON to stdout (structlog). Every record includes `request_id` and `tenant_id`.
+- **Request ID:** `X-Request-ID` header, auto-generated if missing, echoed in response.
+- **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness + DB check).
 
 ---
 
 ## OpenTelemetry
 
-OTel is disabled by default with zero overhead when off. To enable:
+OTel is disabled by default. To enable:
 
 ```bash
 uv sync --extra otel
@@ -184,9 +510,9 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 
 ---
 
-## Releases & Conventional Commits
+## Releases and Conventional Commits
 
-Releases are automated via [python-semantic-release](https://python-semantic-release.readthedocs.io/) on every merge to `main`.
+Releases are automated via python-semantic-release on every merge to `main`.
 
 | Commit prefix | Version bump |
 |---------------|-------------|
@@ -194,21 +520,3 @@ Releases are automated via [python-semantic-release](https://python-semantic-rel
 | `feat:` | minor (0.x.0) |
 | `feat!:` / `BREAKING CHANGE:` | major (x.0.0) |
 | `chore:`, `docs:`, `test:`, `refactor:` | no release |
-
-Examples:
-
-```
-feat: add user authentication endpoint
-fix: correct pagination off-by-one error
-feat!: remove legacy v0 API endpoints
-```
-
----
-
-## Contributing
-
-1. Branch from `main`: `git checkout -b feat/my-feature`
-2. Follow the [service layer pattern](docs/adr/0003-service-layer-pattern.md).
-3. Add tests — `make test` must pass.
-4. Use Conventional Commits.
-5. Open a PR against `main`.
