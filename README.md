@@ -558,6 +558,7 @@ Optional bootstrap:
 ## Observability
 
 - **Logs:** JSON to stdout (structlog). Every record includes `request_id` and `tenant_id`.
+- **HTTP access logs:** request method/path/status/duration with `slow_request` threshold alerts.
 - **Request ID:** `X-Request-ID` header, auto-generated if missing, echoed in response.
 - **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness + DB check).
 

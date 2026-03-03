@@ -17,6 +17,9 @@ env = environ.Env(
     LOG_LEVEL=(str, "INFO"),
     OTEL_ENABLED=(bool, False),
     REDIS_URL=(str, ""),
+    REQUEST_LOG_ENABLED=(bool, True),
+    SLOW_REQUEST_THRESHOLD_MS=(int, 1000),
+    REQUEST_LOG_SKIP_PATHS=(list, ["/healthz", "/readyz"]),
     DB_CONN_MAX_AGE=(int, 60),
     DB_CONN_HEALTH_CHECKS=(bool, True),
     DB_CONNECT_TIMEOUT=(int, 5),
@@ -63,6 +66,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "config.middleware.request_logging.RequestLoggingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -183,6 +187,9 @@ SPECTACULAR_SETTINGS = {
 
 LOG_LEVEL = env("LOG_LEVEL")
 JSON_LOGS = env.bool("JSON_LOGS", default=True)
+REQUEST_LOG_ENABLED = env("REQUEST_LOG_ENABLED")
+SLOW_REQUEST_THRESHOLD_MS = env("SLOW_REQUEST_THRESHOLD_MS")
+REQUEST_LOG_SKIP_PATHS = env("REQUEST_LOG_SKIP_PATHS")
 configure_logging(log_level=LOG_LEVEL, json_logs=JSON_LOGS)
 
 setup_otel()

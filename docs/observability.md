@@ -32,6 +32,29 @@ def my_service_function(item_id: str) -> None:
 
 Always use keyword arguments; avoid f-strings in log messages.
 
+## HTTP Request Logs
+
+`RequestLoggingMiddleware` emits one structured log per HTTP request with:
+
+- `method`
+- `path`
+- `status_code`
+- `duration_ms`
+- `user_id` and `user_role` (when authenticated)
+
+Slow requests are marked with event `slow_request` when `duration_ms >= SLOW_REQUEST_THRESHOLD_MS`.
+Unhandled exceptions produce `request_failed` with stack trace.
+
+Configuration:
+
+```env
+REQUEST_LOG_ENABLED=true
+SLOW_REQUEST_THRESHOLD_MS=1000
+REQUEST_LOG_SKIP_PATHS=/healthz,/readyz
+```
+
+`REQUEST_LOG_SKIP_PATHS` should include high-frequency probes to reduce log noise.
+
 ## Request ID
 
 `RequestIDMiddleware` (see `config/middleware/request_id.py`):
