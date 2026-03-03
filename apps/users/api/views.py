@@ -1,15 +1,21 @@
 import structlog
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework.exceptions import NotFound
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework.exceptions import NotFound, Throttled
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsAdminRole
+from apps.common.permissions import IsAdminRole, IsTeacherOrAdminRole
 from apps.users import services
-from apps.users.api.serializers import UserRoleUpdateSerializer, UserSerializer, UserUpdateSerializer
+from apps.users.api.serializers import (
+    RegistrationCodeInfoSerializer,
+    UserRegisterSerializer,
+    UserRoleUpdateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
 from apps.users.models import User
 
 logger = structlog.get_logger(__name__)
@@ -40,6 +46,48 @@ class MeView(APIView):
         user = services.update_me(user=request.user, **serializer.validated_data)
         logger.info("me_updated", user_id=user.pk)
         return Response(UserSerializer(user).data)
+
+
+class RegisterView(APIView):
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="register_student",
+        summary="Register new student user",
+        request=UserRegisterSerializer,
+        responses={
+            201: UserSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            429: OpenApiResponse(description="Rate limited or cooldown active"),
+        },
+        tags=["auth"],
+    )
+    def post(self, request: Request) -> Response:
+        serializer = UserRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        ip = request.META.get("REMOTE_ADDR", "unknown")
+        username = serializer.validated_data.get("username", "")
+
+        retry_after = services.check_registration_limits(ip=ip, username=username)
+        if retry_after is not None:
+            raise Throttled(wait=retry_after, detail="Too many registration attempts. Try again later.")
+
+        try:
+            user = services.register_student_user(**serializer.validated_data)
+        except Exception:
+            cooldown = services.register_failure(ip=ip, username=username)
+            logger.warning(
+                "registration_failed",
+                username=username,
+                ip=ip,
+                cooldown=cooldown,
+            )
+            raise
+
+        services.register_success(ip=ip, username=username)
+        logger.info("user_registered", user_id=user.pk, username=user.username, ip=ip)
+        return Response(UserSerializer(user).data, status=201)
 
 
 class UserRoleUpdateView(APIView):
@@ -119,3 +167,49 @@ class UserListView(APIView):
         paginator.page_size = 25
         page = paginator.paginate_queryset(qs, request)
         return paginator.get_paginated_response(UserSerializer(page, many=True).data)
+
+
+class TeacherRegistrationCodeInfoView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="teacher_get_registration_code",
+        summary="Get current registration code",
+        responses={200: RegistrationCodeInfoSerializer},
+        tags=["teacher"],
+    )
+    def get(self, request: Request) -> Response:
+        if request.user.role not in {User.Role.TEACHER, User.Role.ADMIN}:
+            raise NotFound(detail="Not found.")
+        info = services.get_current_registration_code_info()
+        return Response(RegistrationCodeInfoSerializer(info).data)
+
+
+class AdminRegistrationCodeInfoView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(
+        operation_id="admin_get_registration_code",
+        summary="Get current registration code",
+        responses={200: RegistrationCodeInfoSerializer},
+        tags=["admin"],
+    )
+    def get(self, request: Request) -> Response:
+        info = services.get_current_registration_code_info()
+        return Response(RegistrationCodeInfoSerializer(info).data)
+
+
+class RegistrationCodeRotateView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(
+        operation_id="rotate_registration_code",
+        summary="Rotate registration code",
+        request=None,
+        responses={200: RegistrationCodeInfoSerializer},
+        tags=["admin"],
+    )
+    def post(self, request: Request) -> Response:
+        info = services.rotate_registration_code()
+        logger.info("registration_code_rotated", actor_id=request.user.pk)
+        return Response(RegistrationCodeInfoSerializer(info).data)

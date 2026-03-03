@@ -4,7 +4,8 @@ from apps.accounts.api.views import (
     CompanyAccountDetailView,
     CompanyAccountListCreateView,
     GlobalChartView,
-    TeacherAccountVisibilityView,
+    TeacherAccountVisibilityDetailView,
+    TeacherAccountVisibilityListView,
 )
 
 app_name = "accounts"
@@ -13,12 +14,12 @@ urlpatterns = [
     path("accounts/chart/", GlobalChartView.as_view(), name="chart"),
     path(
         "accounts/visibility/",
-        TeacherAccountVisibilityView.as_view(),
+        TeacherAccountVisibilityListView.as_view(),
         name="account-visibility",
     ),
     path(
         "accounts/visibility/<int:account_id>/",
-        TeacherAccountVisibilityView.as_view(),
+        TeacherAccountVisibilityDetailView.as_view(),
         name="account-visibility-detail",
     ),
     path(

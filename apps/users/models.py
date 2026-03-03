@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from apps.common.models import TimeStampedModel
+
 
 class User(AbstractUser):
     """
@@ -52,3 +54,20 @@ class User(AbstractUser):
     @property
     def is_student_role(self) -> bool:
         return self.role == self.Role.STUDENT
+
+
+class RegistrationCodeConfig(TimeStampedModel):
+    """
+    Singleton-like configuration for the global rotating registration code.
+    """
+
+    salt = models.CharField(max_length=128, unique=True)
+    window_minutes = models.PositiveSmallIntegerField(default=60)
+    allow_previous_window = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "registration code config"
+        verbose_name_plural = "registration code configs"
+
+    def __str__(self) -> str:
+        return f"RegistrationConfig(window={self.window_minutes}m)"

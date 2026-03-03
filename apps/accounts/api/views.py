@@ -218,11 +218,7 @@ class CompanyAccountDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class TeacherAccountVisibilityView(APIView):
-    """Read and update level-0/1 account visibility overrides for a teacher."""
-
-    permission_classes = [IsAuthenticatedForAccounts]
-
+class _TeacherResolverMixin:
     def _resolve_teacher(self, request: Request) -> User:
         from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -241,8 +237,14 @@ class TeacherAccountVisibilityView(APIView):
             return teacher
         raise PermissionDenied("Teacher or admin role required.")
 
+
+class TeacherAccountVisibilityListView(_TeacherResolverMixin, APIView):
+    """Read level-0/1 account visibility overrides for a teacher."""
+
+    permission_classes = [IsAuthenticatedForAccounts]
+
     @extend_schema(
-        operation_id="get_account_visibility_chart",
+        operation_id="list_account_visibility_chart",
         summary="Get account visibility overrides",
         responses={200: OpenApiResponse(description="Level-0/1 tree with is_visible flags")},
         tags=["account-visibility"],
@@ -251,8 +253,14 @@ class TeacherAccountVisibilityView(APIView):
         teacher = self._resolve_teacher(request)
         return Response(selectors.get_teacher_visibility_chart(teacher=teacher))
 
+
+class TeacherAccountVisibilityDetailView(_TeacherResolverMixin, APIView):
+    """Update level-0/1 account visibility overrides for a teacher."""
+
+    permission_classes = [IsAuthenticatedForAccounts]
+
     @extend_schema(
-        operation_id="set_account_visibility_override",
+        operation_id="update_account_visibility_override",
         summary="Set account visibility override",
         request=AccountVisibilityUpdateSerializer,
         responses={200: OpenApiResponse(description="Updated visibility tree")},

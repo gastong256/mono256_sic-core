@@ -167,6 +167,25 @@ Interactive docs: `GET /api/docs` (Swagger UI) or `GET /api/redoc`.
 
 JWT tokens are required for all SIC endpoints.
 
+#### Student self-registration
+
+```http
+POST /api/v1/auth/register/
+Content-Type: application/json
+
+{
+  "username": "student2",
+  "password": "StrongPass123!",
+  "password_confirm": "StrongPass123!",
+  "registration_code": "ABCDE-12345"
+}
+```
+
+The registration code rotates globally and is visible to teachers/admins:
+- `GET /api/v1/teacher/registration-code/`
+- `GET /api/v1/admin/registration-code/`
+- `POST /api/v1/admin/registration-code/rotate/` (admin only)
+
 #### Obtain token
 
 ```http

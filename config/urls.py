@@ -57,6 +57,7 @@ urlpatterns = [
     path("api/v1/", include("apps.example.api.urls")),
     path("api/v1/auth/", include("apps.users.api.urls", namespace="users")),
     path("api/v1/admin/", include("apps.users.api.admin_urls")),
+    path("api/v1/teacher/", include("apps.users.api.teacher_urls")),
     path("api/v1/", include("apps.courses.api.urls", namespace="courses")),
     path("api/v1/", include("apps.companies.api.urls", namespace="companies")),
     path("api/v1/", include("apps.accounts.api.urls", namespace="accounts")),

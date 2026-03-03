@@ -44,3 +44,21 @@ class UserUpdateSerializer(serializers.Serializer):
 
 class UserRoleUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=User.Role.choices)
+
+
+class UserRegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    registration_code = serializers.CharField(max_length=32)
+
+
+class RegistrationCodeInfoSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    window_minutes = serializers.IntegerField()
+    allow_previous_window = serializers.BooleanField()
+    valid_from = serializers.DateTimeField()
+    valid_until = serializers.DateTimeField()
