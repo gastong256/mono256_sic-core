@@ -1,6 +1,5 @@
 import uuid
 from collections.abc import Callable
-from typing import Any
 
 from django.http import HttpRequest, HttpResponse
 
