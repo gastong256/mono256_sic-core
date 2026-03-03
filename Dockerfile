@@ -28,6 +28,7 @@ COPY --from=builder /build/.venv .venv
 COPY apps/ apps/
 COPY config/ config/
 COPY scripts/run_gunicorn.sh scripts/run_gunicorn.sh
+COPY scripts/run_migrations.sh scripts/run_migrations.sh
 COPY manage.py .
 
 RUN chown -R appuser:appgroup /app

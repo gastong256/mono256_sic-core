@@ -528,6 +528,20 @@ Load the chart of accounts after a fresh DB:
 uv run python manage.py load_chart_of_accounts
 ```
 
+## Production-Like Compose Workflow
+
+Use the production compose profile to run PostgreSQL + Redis + migration job + web:
+
+```bash
+make docker-up-prod
+make docker-logs-prod
+```
+
+The `migrate` service runs first and must complete successfully before `web` starts.
+Optional bootstrap:
+- set `LOAD_BASE_CHART_ON_MIGRATE_PROD=true` to load the base chart after migrations.
+- keep it `false` in steady-state deployments.
+
 ---
 
 ## Observability

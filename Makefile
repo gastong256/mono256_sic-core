@@ -37,6 +37,9 @@ typecheck: ## Run pyright type checker
 migrate: ## Apply database migrations
 	$(MANAGE) migrate
 
+migrate-prod: ## Apply migrations using production settings/env
+	DJANGO_SETTINGS_MODULE=config.settings.prod $(MANAGE) migrate --noinput
+
 makemigrations: ## Create new migrations
 	$(MANAGE) makemigrations $(ARGS)
 

@@ -17,6 +17,9 @@ env = environ.Env(
     LOG_LEVEL=(str, "INFO"),
     OTEL_ENABLED=(bool, False),
     REDIS_URL=(str, ""),
+    DB_CONN_MAX_AGE=(int, 60),
+    DB_CONN_HEALTH_CHECKS=(bool, True),
+    DB_CONNECT_TIMEOUT=(int, 5),
 )
 
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
@@ -88,7 +91,12 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3"),
 }
-DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_MAX_AGE"] = env("DB_CONN_MAX_AGE")
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = env("DB_CONN_HEALTH_CHECKS")
+
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    db_options = DATABASES["default"].setdefault("OPTIONS", {})
+    db_options.setdefault("connect_timeout", env("DB_CONNECT_TIMEOUT"))
 
 REDIS_URL = env("REDIS_URL")
 if REDIS_URL:
