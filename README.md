@@ -41,23 +41,25 @@ practice double-entry bookkeeping using a predefined Argentine chart of accounts
 | Authentication | JWT via `djangorestframework-simplejwt` |
 | Account tree | 3 levels: rubros (L0) → colectivas (L1) → subcuentas (L2) |
 | Currency | Argentine Peso (ARS) |
-| Permissions | Teachers via Django Admin; Students via REST API |
+| Permissions | Role-based (`admin`, `teacher`, `student`) |
 
 ---
 
 ## Roles and Permissions
 
-| Role | Identified by | Access |
-|------|--------------|--------|
-| **Teacher** | `is_staff=True` | Django Admin — full access to all companies, all accounts, all users |
-| **Student** | `is_staff=False` | REST API only — manages own companies and level-3 accounts |
+| Role | Identification | Access |
+|------|----------------|--------|
+| **Admin** | `role=admin` + `is_staff=True` | Full API + Django Admin + role management |
+| **Teacher** | `role=teacher` | Course management, student supervision, accounting operations |
+| **Student** | `role=student` | Accounting operations on own scope |
 
 ### Detailed permission rules
 
-- **Companies:** Students see and manage only their own companies. Teachers see all.
-- **Level-0/1 accounts (rubros, colectivas):** Global, read-only for students. Teachers can add/edit via Admin.
-- **Level-2 accounts (subcuentas):** Students create/edit/delete within their own companies.
+- **Companies:** Students see/manage own companies. Teachers see own + companies of students enrolled in their courses. Admin sees all.
+- **Level-0/1 accounts (rubros, colectivas):** Global, read-only via API. Teachers can apply show/hide overrides for their students.
+- **Level-2 accounts (subcuentas):** Students create/edit/delete on allowed companies. Teachers/admin can operate on supervised scope.
 - **Deleting accounts:** Blocked (409 Conflict) if the account has transaction legs in hordak.
+- **Courses:** Teachers/admin can create courses and enroll students (one course per student).
 
 ---
 
@@ -216,6 +218,27 @@ Authorization: Bearer <access_token>
 ### Companies
 
 Students act as an accounting firm and can manage multiple companies.
+
+### Courses and Teacher Supervision
+
+- `GET/POST /api/v1/courses/`
+- `GET/PATCH/DELETE /api/v1/courses/{course_id}/`
+- `POST /api/v1/courses/{course_id}/enrollments/`
+- `DELETE /api/v1/courses/{course_id}/enrollments/{student_id}/`
+- `GET /api/v1/teacher/courses/{course_id}/companies/`
+- `GET /api/v1/teacher/courses/{course_id}/journal-entries/`
+
+### Admin Role Management
+
+- `PATCH /api/v1/admin/users/{user_id}/role/`
+
+Body:
+
+```json
+{
+  "role": "teacher"
+}
+```
 
 #### List companies
 

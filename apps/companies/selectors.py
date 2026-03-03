@@ -1,18 +1,29 @@
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.companies.models import Company
+from apps.users.models import User
 
 
 def list_companies(*, user) -> QuerySet[Company]:
     """
     Return companies visible to the given user.
 
-    Teachers (is_staff=True) see all companies.
-    Students see only their own companies.
+    Admin sees all companies.
+    Teacher sees own companies plus companies from students enrolled in their courses.
+    Student sees only own companies.
     """
-    if user.is_staff:
+    if user.role == User.Role.ADMIN:
         return Company.objects.select_related("owner").all()
+
+    if user.role == User.Role.TEACHER:
+        from apps.courses.selectors import student_ids_for_teacher
+
+        enrolled_ids = student_ids_for_teacher(teacher=user)
+        return Company.objects.select_related("owner").filter(
+            Q(owner=user) | Q(owner_id__in=enrolled_ids)
+        )
+
     return Company.objects.select_related("owner").filter(owner=user)
 
 
@@ -28,7 +39,23 @@ def get_company(*, pk: int, user) -> Company:
     except Company.DoesNotExist:
         raise NotFound(detail="Company not found.")
 
-    if not user.is_staff and company.owner != user:
+    if user.role == User.Role.ADMIN:
+        return company
+
+    if user.role == User.Role.STUDENT and company.owner_id != user.id:
+        raise PermissionDenied(detail="You do not have permission to access this company.")
+
+    if user.role == User.Role.TEACHER:
+        if company.owner_id == user.id:
+            return company
+        from apps.courses.models import CourseEnrollment
+
+        enrolled = CourseEnrollment.objects.filter(
+            course__teacher=user,
+            student_id=company.owner_id,
+        ).exists()
+        if enrolled:
+            return company
         raise PermissionDenied(detail="You do not have permission to access this company.")
 
     return company

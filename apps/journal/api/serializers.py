@@ -45,6 +45,8 @@ class JournalEntryListSerializer(serializers.ModelSerializer):
     created_by = serializers.CharField(source="created_by.username", read_only=True)
     total_debit = serializers.SerializerMethodField()
     total_credit = serializers.SerializerMethodField()
+    reversal_of_id = serializers.IntegerField(read_only=True)
+    reversed_by_id = serializers.SerializerMethodField()
 
     class Meta:
         model = JournalEntry
@@ -56,6 +58,8 @@ class JournalEntryListSerializer(serializers.ModelSerializer):
             "source_type",
             "source_ref",
             "created_by",
+            "reversal_of_id",
+            "reversed_by_id",
             "total_debit",
             "total_credit",
         ]
@@ -72,6 +76,12 @@ class JournalEntryListSerializer(serializers.ModelSerializer):
             (line.amount for line in obj.lines.all() if line.type == JournalEntryLine.LineType.CREDIT),
             Decimal("0"),
         )
+
+    def get_reversed_by_id(self, obj: JournalEntry) -> int | None:
+        try:
+            return obj.reversed_by.id
+        except JournalEntry.reversed_by.RelatedObjectDoesNotExist:
+            return None
 
 
 class JournalEntryDetailSerializer(JournalEntryListSerializer):
@@ -115,3 +125,15 @@ class JournalEntryCreateSerializer(serializers.Serializer):
                 "El asiento debe tener al menos una línea deudora y una acreedora."
             )
         return value
+
+
+class JournalEntryReverseSerializer(serializers.Serializer):
+    """Optional payload when reversing a journal entry."""
+
+    date = serializers.DateField(required=False, help_text="Date for the reversal entry.")
+    description = serializers.CharField(
+        max_length=500,
+        required=False,
+        allow_blank=True,
+        help_text="Optional description for the reversal entry.",
+    )

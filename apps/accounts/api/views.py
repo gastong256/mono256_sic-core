@@ -7,8 +7,13 @@ from rest_framework.views import APIView
 
 from apps.accounts import selectors, services
 from apps.accounts.api.permissions import IsAuthenticatedForAccounts
-from apps.accounts.api.serializers import AccountCreateSerializer, AccountUpdateSerializer
+from apps.accounts.api.serializers import (
+    AccountCreateSerializer,
+    AccountUpdateSerializer,
+    AccountVisibilityUpdateSerializer,
+)
 from apps.companies import selectors as company_selectors
+from apps.users.models import User
 
 logger = structlog.get_logger(__name__)
 
@@ -33,7 +38,7 @@ class GlobalChartView(APIView):
     )
     def get(self, request: Request) -> Response:
         """Return the global chart of accounts as a nested tree."""
-        tree = selectors.get_global_chart()
+        tree = selectors.get_global_chart(user=request.user)
         return Response(tree)
 
 
@@ -64,7 +69,7 @@ class CompanyAccountListCreateView(APIView):
     def get(self, request: Request, company_id: int) -> Response:
         """Return the company's full chart of accounts as a nested tree."""
         company = self._get_company(company_id, request.user)
-        tree = selectors.get_company_chart(company=company)
+        tree = selectors.get_company_chart(company=company, user=request.user)
         return Response(tree)
 
     @extend_schema(
@@ -94,6 +99,7 @@ class CompanyAccountListCreateView(APIView):
 
         account = services.create_account(
             company=company,
+            actor=request.user,
             name=serializer.validated_data["name"],
             code=serializer.validated_data["code"],
             parent_id=serializer.validated_data["parent_id"],
@@ -125,17 +131,20 @@ class CompanyAccountDetailView(APIView):
         Raises 404 if the company or account is not found.
         Raises 403 if the user does not have access to the company.
         """
-        from hordak.models import Account
+        from apps.companies.models import CompanyAccount
         from rest_framework.exceptions import NotFound
 
         company = company_selectors.get_company(pk=company_id, user=user)
 
         try:
-            account = Account.objects.get(pk=account_id)
-        except Account.DoesNotExist:
+            company_account = CompanyAccount.objects.select_related("account").get(
+                account_id=account_id,
+                company=company,
+            )
+        except CompanyAccount.DoesNotExist:
             raise NotFound(detail="Account not found.")
 
-        return account, company
+        return company_account.account, company
 
     @extend_schema(
         operation_id="update_company_account",
@@ -161,6 +170,7 @@ class CompanyAccountDetailView(APIView):
         account = services.update_account(
             account=account,
             company=company,
+            actor=request.user,
             name=serializer.validated_data.get("name"),
             code=serializer.validated_data.get("code"),
         )
@@ -206,3 +216,79 @@ class CompanyAccountDetailView(APIView):
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TeacherAccountVisibilityView(APIView):
+    """Read and update level-0/1 account visibility overrides for a teacher."""
+
+    permission_classes = [IsAuthenticatedForAccounts]
+
+    def _resolve_teacher(self, request: Request) -> User:
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+
+        if request.user.role == User.Role.TEACHER:
+            return request.user
+        if request.user.role == User.Role.ADMIN:
+            teacher_id = request.query_params.get("teacher_id") or request.data.get("teacher_id")
+            if not teacher_id:
+                raise ValidationError({"teacher_id": "teacher_id is required for admin requests."})
+            try:
+                teacher = User.objects.get(pk=teacher_id)
+            except User.DoesNotExist:
+                raise ValidationError({"teacher_id": "Teacher not found."})
+            if teacher.role != User.Role.TEACHER:
+                raise ValidationError({"teacher_id": "Selected user is not a teacher."})
+            return teacher
+        raise PermissionDenied("Teacher or admin role required.")
+
+    @extend_schema(
+        operation_id="get_account_visibility_chart",
+        summary="Get account visibility overrides",
+        responses={200: OpenApiResponse(description="Level-0/1 tree with is_visible flags")},
+        tags=["account-visibility"],
+    )
+    def get(self, request: Request) -> Response:
+        teacher = self._resolve_teacher(request)
+        return Response(selectors.get_teacher_visibility_chart(teacher=teacher))
+
+    @extend_schema(
+        operation_id="set_account_visibility_override",
+        summary="Set account visibility override",
+        request=AccountVisibilityUpdateSerializer,
+        responses={200: OpenApiResponse(description="Updated visibility tree")},
+        tags=["account-visibility"],
+    )
+    def patch(self, request: Request, account_id: int) -> Response:
+        from rest_framework.exceptions import ValidationError
+        from apps.accounts.models import TeacherAccountVisibility
+        from hordak.models import Account
+
+        teacher = self._resolve_teacher(request)
+
+        serializer = AccountVisibilityUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            account = Account.objects.get(pk=account_id)
+        except Account.DoesNotExist:
+            raise ValidationError({"account_id": "Account not found."})
+        if account.level > 1:
+            raise ValidationError({"account_id": "Only level-0/1 accounts can be hidden."})
+
+        visibility, _ = TeacherAccountVisibility.objects.get_or_create(
+            teacher=teacher,
+            account=account,
+            defaults={"is_visible": serializer.validated_data["is_visible"]},
+        )
+        visibility.is_visible = serializer.validated_data["is_visible"]
+        visibility.full_clean()
+        visibility.save(update_fields=["is_visible", "updated_at"])
+
+        logger.info(
+            "account_visibility_updated",
+            actor_id=request.user.pk,
+            teacher_id=teacher.pk,
+            account_id=account.pk,
+            is_visible=visibility.is_visible,
+        )
+        return Response(selectors.get_teacher_visibility_chart(teacher=teacher))

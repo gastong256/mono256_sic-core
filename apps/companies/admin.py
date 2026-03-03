@@ -19,7 +19,7 @@ class CompanyAccountInline(admin.TabularInline):
 class CompanyAdmin(admin.ModelAdmin):
     """Admin interface for Company."""
 
-    list_display = ("name", "owner", "account_count", "created_at")
+    list_display = ("name", "owner", "books_closed_until", "account_count", "created_at")
     list_filter = ("owner",)
     search_fields = ("name", "owner__username")
     readonly_fields = ("created_at", "updated_at")

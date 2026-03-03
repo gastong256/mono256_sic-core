@@ -1,13 +1,19 @@
 from rest_framework.permissions import BasePermission
 
+from apps.users.models import User
+
 
 class IsTeacher(BasePermission):
-    """Grants access only to staff users (teachers)."""
+    """Grants access only to teacher/admin role users."""
 
     message = "Only teachers can perform this action."
 
     def has_permission(self, request, view) -> bool:
-        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in {User.Role.TEACHER, User.Role.ADMIN}
+        )
 
 
 class IsCompanyOwner(BasePermission):
@@ -37,6 +43,6 @@ class IsTeacherOrOwner(BasePermission):
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj) -> bool:
-        if request.user.is_staff:
+        if request.user.role in {User.Role.TEACHER, User.Role.ADMIN}:
             return True
         return obj.owner == request.user

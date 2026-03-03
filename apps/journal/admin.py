@@ -24,6 +24,7 @@ class JournalEntryAdmin(admin.ModelAdmin):
         "description",
         "source_type",
         "source_ref",
+        "reversal_of",
         "created_by",
         "total_debit",
     )
@@ -37,6 +38,7 @@ class JournalEntryAdmin(admin.ModelAdmin):
         "description",
         "source_type",
         "source_ref",
+        "reversal_of",
         "created_by",
         "created_at",
         "updated_at",

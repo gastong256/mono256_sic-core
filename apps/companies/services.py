@@ -1,3 +1,6 @@
+from django.db.models import ProtectedError
+
+from config.exceptions import ConflictError
 from apps.companies.models import Company
 
 
@@ -22,4 +25,9 @@ def update_company(*, company: Company, name: str | None = None, tax_id: str | N
 
 def delete_company(*, company: Company) -> None:
     """Delete a Company and cascade-delete its CompanyAccounts (and linked hordak Accounts)."""
-    company.delete()
+    try:
+        company.delete()
+    except ProtectedError:
+        raise ConflictError(
+            "Cannot delete company with posted journal entries or protected records."
+        )

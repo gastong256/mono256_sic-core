@@ -9,7 +9,7 @@ def list_journal_entries(*, company: Company) -> QuerySet[JournalEntry]:
     """Return all journal entries for a company ordered by entry_number."""
     return (
         JournalEntry.objects.filter(company=company)
-        .select_related("created_by")
+        .select_related("created_by", "reversal_of", "reversed_by")
         .prefetch_related("lines")
         .order_by("entry_number")
     )
@@ -23,7 +23,7 @@ def get_journal_entry(*, pk: int, company: Company) -> JournalEntry:
     """
     try:
         return (
-            JournalEntry.objects.select_related("created_by")
+            JournalEntry.objects.select_related("created_by", "reversal_of", "reversed_by")
             .prefetch_related("lines__account")
             .get(pk=pk, company=company)
         )

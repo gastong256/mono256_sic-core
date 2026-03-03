@@ -57,10 +57,21 @@ class JournalEntry(TimeStampedModel):
         related_name="journal_entries",
         verbose_name="registrado por",
     )
+    reversal_of = models.OneToOneField(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="reversed_by",
+        verbose_name="reversión de",
+    )
 
     class Meta:
         ordering = ["company", "entry_number"]
         unique_together = [("company", "entry_number")]
+        indexes = [
+            models.Index(fields=["company", "date"]),
+        ]
         verbose_name = "Asiento contable"
         verbose_name_plural = "Asientos contables"
 
@@ -110,6 +121,9 @@ class JournalEntryLine(models.Model):
     )
 
     class Meta:
+        indexes = [
+            models.Index(fields=["journal_entry", "account", "type"]),
+        ]
         verbose_name = "Línea de asiento"
         verbose_name_plural = "Líneas de asiento"
 

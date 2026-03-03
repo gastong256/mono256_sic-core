@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from hordak.models import Account
+from apps.accounts.models import TeacherAccountVisibility
 
 
 # Hordak registers its own AccountAdmin. We unregister it and replace with ours.
@@ -48,3 +49,10 @@ class AccountAdmin(admin.ModelAdmin):
     def has_add_permission(self, request) -> bool:
         """Only staff can add accounts directly through admin."""
         return request.user.is_staff
+
+
+@admin.register(TeacherAccountVisibility)
+class TeacherAccountVisibilityAdmin(admin.ModelAdmin):
+    list_display = ("teacher", "account", "is_visible", "updated_at")
+    list_filter = ("is_visible", "teacher")
+    search_fields = ("teacher__username", "account__full_code", "account__name")

@@ -17,10 +17,18 @@ class CompanySerializer(serializers.ModelSerializer):
             "tax_id",
             "owner_username",
             "account_count",
+            "books_closed_until",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "owner_username", "account_count", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "owner_username",
+            "account_count",
+            "books_closed_until",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_account_count(self, obj: Company) -> int:
         """Return the number of level-3 accounts linked to this company."""

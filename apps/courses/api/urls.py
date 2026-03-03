@@ -1,0 +1,37 @@
+from django.urls import path
+
+from apps.courses.api.views import (
+    CourseDetailView,
+    CourseEnrollmentCreateView,
+    CourseEnrollmentDeleteView,
+    CourseListCreateView,
+    TeacherCourseCompaniesView,
+    TeacherCourseJournalEntriesView,
+)
+
+app_name = "courses"
+
+urlpatterns = [
+    path("courses/", CourseListCreateView.as_view(), name="course-list-create"),
+    path("courses/<int:course_id>/", CourseDetailView.as_view(), name="course-detail"),
+    path(
+        "courses/<int:course_id>/enrollments/",
+        CourseEnrollmentCreateView.as_view(),
+        name="course-enrollment-create",
+    ),
+    path(
+        "courses/<int:course_id>/enrollments/<int:student_id>/",
+        CourseEnrollmentDeleteView.as_view(),
+        name="course-enrollment-delete",
+    ),
+    path(
+        "teacher/courses/<int:course_id>/companies/",
+        TeacherCourseCompaniesView.as_view(),
+        name="teacher-course-companies",
+    ),
+    path(
+        "teacher/courses/<int:course_id>/journal-entries/",
+        TeacherCourseJournalEntriesView.as_view(),
+        name="teacher-course-journal-entries",
+    ),
+]

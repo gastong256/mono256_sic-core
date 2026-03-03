@@ -15,13 +15,15 @@ Uniqueness is checked via Account.full_code (globally unique field).
 
 import re
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import ValidationError
 
 from config.exceptions import ConflictError
 from hordak.models import Account
 
+from apps.accounts.models import TeacherAccountVisibility
 from apps.companies.models import Company, CompanyAccount
+from apps.users.models import User
 
 # Regex for the full user-facing code: e.g. "1.04.01" or "2.06.03"
 ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
@@ -54,8 +56,47 @@ def _extract_local_code(full_code: str) -> str:
     return f".{last_segment}"
 
 
+def _is_hidden_for_student(*, student: User, account_id: int) -> bool:
+    from apps.courses.models import CourseEnrollment
+
+    try:
+        enrollment = CourseEnrollment.objects.select_related("course__teacher").get(student=student)
+    except CourseEnrollment.DoesNotExist:
+        return False
+
+    return TeacherAccountVisibility.objects.filter(
+        teacher=enrollment.course.teacher,
+        account_id=account_id,
+        is_visible=False,
+    ).exists()
+
+
+def _validate_code_matches_parent(*, code: str, parent: Account) -> None:
+    """
+    Ensure the user-facing full code belongs to the provided parent account.
+
+    Example:
+      parent.full_code = "1.04"  -> valid child code must start with "1.04."
+    """
+    if not parent.full_code:
+        raise ValidationError({"parent_id": "Parent account has no full_code."})
+
+    expected_prefix = f"{parent.full_code}."
+    if not code.startswith(expected_prefix):
+        raise ValidationError(
+            {"code": f"Account code must start with '{expected_prefix}' for the selected parent."}
+        )
+
+
 @transaction.atomic
-def create_account(*, company: Company, name: str, code: str, parent_id: int) -> Account:
+def create_account(
+    *,
+    company: Company,
+    actor: User,
+    name: str,
+    code: str,
+    parent_id: int,
+) -> Account:
     """
     Create a new level-2 (MPTT) account for the given company.
 
@@ -79,18 +120,24 @@ def create_account(*, company: Company, name: str, code: str, parent_id: int) ->
         raise ValidationError(
             {"parent_id": "Parent must be a level-2 account (colectiva)."}
         )
+    if actor.role == User.Role.STUDENT and _is_hidden_for_student(student=actor, account_id=parent.pk):
+        raise ValidationError({"parent_id": "This account is hidden by your teacher."})
 
+    _validate_code_matches_parent(code=code, parent=parent)
     _validate_code_unique(code)
 
     local_code = _extract_local_code(code)
 
-    account = Account.objects.create(
-        code=local_code,
-        name=name,
-        type=parent.type,
-        currencies=parent.currencies,
-        parent=parent,
-    )
+    try:
+        account = Account.objects.create(
+            code=local_code,
+            name=name,
+            type=parent.type,
+            currencies=parent.currencies,
+            parent=parent,
+        )
+    except IntegrityError:
+        raise ValidationError({"code": f"Account code '{code}' already exists."})
 
     CompanyAccount.objects.create(account=account, company=company)
 
@@ -102,6 +149,7 @@ def update_account(
     *,
     account: Account,
     company: Company,
+    actor: User,
     name: str | None = None,
     code: str | None = None,
 ) -> Account:
@@ -116,15 +164,32 @@ def update_account(
     if not CompanyAccount.objects.filter(account=account, company=company).exists():
         raise PermissionDenied("This account does not belong to your company.")
 
+    if account.level != 2 or not account.is_leaf_node():
+        raise ValidationError(
+            {"account": "Only level-3 movement accounts can be updated."}
+        )
+    if actor.role == User.Role.STUDENT and account.parent_id and _is_hidden_for_student(
+        student=actor,
+        account_id=account.parent_id,
+    ):
+        raise ValidationError({"account": "This account is hidden by your teacher."})
+
     if name is not None:
         account.name = name
 
     if code is not None:
+        if not account.parent:
+            raise ValidationError({"account": "Account parent is required."})
         _validate_code_format(code)
+        _validate_code_matches_parent(code=code, parent=account.parent)
         _validate_code_unique(code, exclude_pk=account.pk)
         account.code = _extract_local_code(code)
 
-    account.save()
+    try:
+        account.save()
+    except IntegrityError:
+        conflict_code = code or account.full_code or account.code
+        raise ValidationError({"code": f"Account code '{conflict_code}' already exists."})
     account.refresh_from_db()
     return account
 

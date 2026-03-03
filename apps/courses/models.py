@@ -1,0 +1,48 @@
+from django.core.exceptions import ValidationError
+from django.db import models
+
+from apps.common.models import TimeStampedModel
+from apps.users.models import User
+
+
+class Course(TimeStampedModel):
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    teacher = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="courses",
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def clean(self) -> None:
+        if self.teacher.role != User.Role.TEACHER:
+            raise ValidationError({"teacher": "Course teacher must have teacher role."})
+
+    def __str__(self) -> str:
+        return self.code or self.name
+
+
+class CourseEnrollment(TimeStampedModel):
+    student = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="course_enrollment",
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+
+    class Meta:
+        ordering = ["student__username"]
+
+    def clean(self) -> None:
+        if self.student.role != User.Role.STUDENT:
+            raise ValidationError({"student": "Only student users can be enrolled."})
+
+    def __str__(self) -> str:
+        return f"{self.student.username} -> {self.course}"

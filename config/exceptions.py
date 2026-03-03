@@ -1,5 +1,7 @@
 from typing import Any
 
+from django.db import IntegrityError
+from django.db.models import ProtectedError
 from rest_framework import exceptions, status
 from rest_framework.exceptions import APIException
 from rest_framework.request import Request
@@ -24,6 +26,17 @@ def _get_error_code(exc: Exception) -> str:
 def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
     response = drf_exception_handler(exc, context)
     if response is None:
+        if isinstance(exc, (IntegrityError, ProtectedError)):
+            return Response(
+                {
+                    "error": {
+                        "code": "conflict",
+                        "message": "Operation could not be completed due to a resource conflict.",
+                        "detail": None,
+                    }
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
         return None
 
     if isinstance(exc, exceptions.ValidationError):

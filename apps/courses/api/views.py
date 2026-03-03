@@ -1,0 +1,263 @@
+import datetime
+
+import structlog
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.common.permissions import IsTeacherOrAdminRole
+from apps.companies.models import Company
+from apps.courses import selectors, services
+from apps.courses.api.serializers import (
+    CourseSerializer,
+    CourseWriteSerializer,
+    EnrollmentCreateSerializer,
+    EnrollmentSerializer,
+)
+from apps.courses.models import CourseEnrollment
+from apps.journal.models import JournalEntry
+from apps.users.models import User
+
+logger = structlog.get_logger(__name__)
+
+
+def _resolve_course_teacher(*, request_user: User, teacher_id: int | None) -> User:
+    if request_user.role == User.Role.ADMIN:
+        if teacher_id:
+            try:
+                teacher = User.objects.get(pk=teacher_id)
+            except User.DoesNotExist:
+                from rest_framework.exceptions import ValidationError
+
+                raise ValidationError({"teacher_id": "Teacher not found."})
+            if teacher.role != User.Role.TEACHER:
+                from rest_framework.exceptions import ValidationError
+
+                raise ValidationError({"teacher_id": "Selected user is not a teacher."})
+            return teacher
+        from rest_framework.exceptions import ValidationError
+
+        raise ValidationError({"teacher_id": "teacher_id is required for admin course creation."})
+    return request_user
+
+
+class CourseListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["courses"], responses={200: CourseSerializer(many=True)})
+    def get(self, request: Request) -> Response:
+        courses = selectors.list_courses(user=request.user).prefetch_related("enrollments")
+        return Response(CourseSerializer(courses, many=True).data)
+
+    @extend_schema(
+        tags=["courses"],
+        request=CourseWriteSerializer,
+        responses={201: CourseSerializer, 400: OpenApiResponse(description="Validation error")},
+    )
+    def post(self, request: Request) -> Response:
+        serializer = CourseWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        teacher = _resolve_course_teacher(
+            request_user=request.user,
+            teacher_id=serializer.validated_data.get("teacher_id"),
+        )
+        course = services.create_course(
+            teacher=teacher,
+            name=serializer.validated_data["name"],
+            code=serializer.validated_data.get("code"),
+        )
+        logger.info("course_created", course_id=course.pk, teacher_id=teacher.pk, actor_id=request.user.pk)
+        return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
+
+
+class CourseDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["courses"], responses={200: CourseSerializer})
+    def get(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        return Response(CourseSerializer(course).data)
+
+    @extend_schema(tags=["courses"], request=CourseWriteSerializer, responses={200: CourseSerializer})
+    def patch(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        serializer = CourseWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        updated = services.update_course(
+            course=course,
+            name=serializer.validated_data.get("name"),
+            code=serializer.validated_data.get("code"),
+        )
+        logger.info("course_updated", course_id=updated.pk, actor_id=request.user.pk)
+        return Response(CourseSerializer(updated).data)
+
+    @extend_schema(tags=["courses"], responses={204: OpenApiResponse(description="No content")})
+    def delete(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        services.delete_course(course=course)
+        logger.info("course_deleted", course_id=course_id, actor_id=request.user.pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseEnrollmentCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["courses"], request=EnrollmentCreateSerializer, responses={201: EnrollmentSerializer})
+    def post(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        serializer = EnrollmentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        student = User.objects.get(pk=serializer.validated_data["student_id"])
+        enrollment = services.enroll_student(course=course, student=student)
+        logger.info(
+            "course_student_enrolled",
+            course_id=course.pk,
+            student_id=student.pk,
+            actor_id=request.user.pk,
+        )
+        return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED)
+
+
+class CourseEnrollmentDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["courses"], responses={204: OpenApiResponse(description="No content")})
+    def delete(self, request: Request, course_id: int, student_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        try:
+            student = User.objects.get(pk=student_id)
+        except User.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("Student not found.")
+
+        services.unenroll_student(course=course, student=student)
+        logger.info(
+            "course_student_unenrolled",
+            course_id=course.pk,
+            student_id=student.pk,
+            actor_id=request.user.pk,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TeacherCourseCompaniesView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["teacher"], responses={200: OpenApiResponse(description="Companies grouped by student")})
+    def get(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        enrollments = (
+            CourseEnrollment.objects.filter(course=course)
+            .select_related("student")
+            .order_by("student__username")
+        )
+        student_ids = [e.student_id for e in enrollments]
+
+        companies = (
+            Company.objects.filter(owner_id__in=student_ids)
+            .select_related("owner")
+            .order_by("owner__username", "name")
+        )
+
+        companies_by_student: dict[int, list[dict]] = {sid: [] for sid in student_ids}
+        for company in companies:
+            companies_by_student[company.owner_id].append(
+                {
+                    "id": company.id,
+                    "name": company.name,
+                    "tax_id": company.tax_id,
+                    "created_at": company.created_at,
+                }
+            )
+
+        data = [
+            {
+                "student_id": enrollment.student_id,
+                "student_username": enrollment.student.username,
+                "companies": companies_by_student.get(enrollment.student_id, []),
+            }
+            for enrollment in enrollments
+        ]
+        return Response({"course_id": course.id, "course_name": course.name, "students": data})
+
+
+class TeacherCourseJournalEntriesView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="date_from", type=str, required=False),
+            OpenApiParameter(name="date_to", type=str, required=False),
+            OpenApiParameter(name="student_id", type=int, required=False),
+            OpenApiParameter(name="company_id", type=int, required=False),
+        ],
+        responses={200: OpenApiResponse(description="Paginated course journal entries")},
+    )
+    def get(self, request: Request, course_id: int) -> Response:
+        from rest_framework.exceptions import ValidationError
+
+        course = selectors.get_course(pk=course_id, user=request.user)
+        enrollments = CourseEnrollment.objects.filter(course=course).values_list("student_id", flat=True)
+
+        qs = (
+            JournalEntry.objects.filter(company__owner_id__in=enrollments)
+            .select_related("company", "company__owner", "created_by")
+            .order_by("-date", "-entry_number")
+        )
+
+        date_from = request.query_params.get("date_from")
+        if date_from:
+            try:
+                qs = qs.filter(date__gte=datetime.date.fromisoformat(date_from))
+            except ValueError:
+                raise ValidationError({"date_from": "Invalid date format. Use YYYY-MM-DD."})
+
+        date_to = request.query_params.get("date_to")
+        if date_to:
+            try:
+                qs = qs.filter(date__lte=datetime.date.fromisoformat(date_to))
+            except ValueError:
+                raise ValidationError({"date_to": "Invalid date format. Use YYYY-MM-DD."})
+
+        student_id = request.query_params.get("student_id")
+        if student_id:
+            qs = qs.filter(company__owner_id=student_id)
+
+        company_id = request.query_params.get("company_id")
+        if company_id:
+            qs = qs.filter(company_id=company_id)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 25
+        page = paginator.paginate_queryset(qs, request)
+
+        data = [
+            {
+                "id": entry.id,
+                "entry_number": entry.entry_number,
+                "date": str(entry.date),
+                "description": entry.description,
+                "source_type": entry.source_type,
+                "source_ref": entry.source_ref,
+                "company_id": entry.company_id,
+                "company_name": entry.company.name,
+                "student_id": entry.company.owner_id,
+                "student_username": entry.company.owner.username,
+                "created_by": entry.created_by.username,
+            }
+            for entry in page
+        ]
+        return paginator.get_paginated_response(data)

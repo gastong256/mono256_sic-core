@@ -58,3 +58,8 @@ class AccountUpdateSerializer(serializers.Serializer):
                 "At least one of 'name' or 'code' must be provided."
             )
         return attrs
+
+
+class AccountVisibilityUpdateSerializer(serializers.Serializer):
+    is_visible = serializers.BooleanField()
+    teacher_id = serializers.IntegerField(required=False, min_value=1)

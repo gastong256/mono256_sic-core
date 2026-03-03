@@ -1,12 +1,15 @@
 import structlog
 from drf_spectacular.utils import extend_schema
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.permissions import IsAdminRole
 from apps.users import services
-from apps.users.api.serializers import UserSerializer, UserUpdateSerializer
+from apps.users.api.serializers import UserRoleUpdateSerializer, UserSerializer, UserUpdateSerializer
+from apps.users.models import User
 
 logger = structlog.get_logger(__name__)
 
@@ -35,4 +38,33 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         user = services.update_me(user=request.user, **serializer.validated_data)
         logger.info("me_updated", user_id=user.pk)
+        return Response(UserSerializer(user).data)
+
+
+class UserRoleUpdateView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(
+        operation_id="admin_update_user_role",
+        summary="Update user role",
+        request=UserRoleUpdateSerializer,
+        responses={200: UserSerializer},
+        tags=["admin"],
+    )
+    def patch(self, request: Request, user_id: int) -> Response:
+        serializer = UserRoleUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            raise NotFound(detail="User not found.")
+
+        user = services.set_user_role(user=user, role=serializer.validated_data["role"])
+        logger.info(
+            "user_role_updated",
+            actor_id=request.user.pk,
+            target_user_id=user.pk,
+            role=user.role,
+        )
         return Response(UserSerializer(user).data)

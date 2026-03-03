@@ -60,6 +60,7 @@ logger = structlog.get_logger(__name__)
         responses={
             204: OpenApiResponse(description="No content"),
             403: OpenApiResponse(description="Permission denied"),
+            409: OpenApiResponse(description="Company has protected accounting records"),
         },
         tags=["companies"],
     ),

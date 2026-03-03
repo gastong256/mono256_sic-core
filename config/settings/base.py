@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "mptt",
     "hordak",
     "apps.users",
+    "apps.courses",
     "apps.companies",
     "apps.accounts",
     "apps.journal",

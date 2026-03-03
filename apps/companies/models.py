@@ -27,6 +27,12 @@ class Company(TimeStampedModel):
         verbose_name="owner",
         help_text="Student who owns this company.",
     )
+    books_closed_until = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="books closed until",
+        help_text="Entries on or before this date are locked.",
+    )
 
     class Meta:
         verbose_name = "company"
