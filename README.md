@@ -22,6 +22,7 @@
 - [Project Structure](#project-structure)
 - [Local Dev Workflow](#local-dev-workflow)
 - [Observability](#observability)
+- [Operations Runbook](#operations-runbook)
 - [OpenTelemetry](#opentelemetry)
 - [Releases and Conventional Commits](#releases-and-conventional-commits)
 
@@ -561,6 +562,12 @@ Optional bootstrap:
 - **HTTP access logs:** request method/path/status/duration with `slow_request` threshold alerts.
 - **Request ID:** `X-Request-ID` header, auto-generated if missing, echoed in response.
 - **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness + DB check).
+
+## Operations Runbook
+
+Operational procedures are documented in:
+
+- `docs/operations.md` (deploy, migration policy, backup/restore, rollback, incident response)
 
 ---
 
