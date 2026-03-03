@@ -76,6 +76,12 @@ jobs:
       - name: Typecheck
         run: uv run pyright
 
+      - name: OpenAPI validation
+        run: make check-schema
+
+      - name: Production settings check
+        run: make check-prod-settings
+
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/template_test
@@ -119,6 +125,12 @@ jobs:
 
       - name: Typecheck
         run: uv run pyright
+
+      - name: OpenAPI validation
+        run: make check-schema
+
+      - name: Production settings check
+        run: make check-prod-settings
 
       - name: Run tests
         env:

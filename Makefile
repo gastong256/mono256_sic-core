@@ -77,7 +77,14 @@ export-schema: ## Export OpenAPI schema to file
 	@bash scripts/export_schema.sh
 
 check-schema: ## Validate OpenAPI generation without writing artifact
-	DJANGO_SETTINGS_MODULE=config.settings.local uv run python manage.py spectacular --validate --fail-on-warn
+	DJANGO_SETTINGS_MODULE=config.settings.local uv run python manage.py spectacular --validate --fail-on-warn --file /tmp/openapi-check.yaml
+
+check-prod-settings: ## Run Django deployment checks with production settings
+	DJANGO_SETTINGS_MODULE=config.settings.prod \
+	DJANGO_SECRET_KEY=ci-prod-secret-key-with-50-plus-characters-1234567890 \
+	DJANGO_ALLOWED_HOSTS=api.example.com \
+	DATABASE_URL=sqlite:///db.sqlite3 \
+	uv run python manage.py check --deploy --fail-level WARNING
 
 pre-commit: ## Run pre-commit hooks against all files
 	uv run pre-commit run --all-files

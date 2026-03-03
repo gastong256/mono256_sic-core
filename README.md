@@ -529,6 +529,16 @@ Load the chart of accounts after a fresh DB:
 uv run python manage.py load_chart_of_accounts
 ```
 
+## CI Quality Gates
+
+The CI workflow runs these minimum gates on every PR/push:
+- Ruff lint (`make lint`)
+- Black format check (`make format-check`)
+- Pyright type check (`make typecheck`)
+- OpenAPI validation (`make check-schema`)
+- Django production checks (`make check-prod-settings`)
+- Pytest (+ coverage on initialized repo)
+
 ## Production-Like Compose Workflow
 
 Use the production compose profile to run PostgreSQL + Redis + migration job + web:
