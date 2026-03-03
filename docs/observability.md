@@ -81,3 +81,16 @@ LOG_LEVEL=DEBUG   # verbose, local dev
 LOG_LEVEL=INFO    # production default
 LOG_LEVEL=WARNING # quieter
 ```
+
+## Shared Cache for Security Controls
+
+Registration anti-abuse controls (rate limits and cooldowns) use Django cache.
+
+- **Local/dev fallback**: in-memory cache (`LocMemCache`)
+- **Production**: configure a shared Redis cache via `REDIS_URL`
+
+```env
+REDIS_URL=redis://cache-host:6379/0
+```
+
+Without a shared cache in production, limits may become inconsistent across multiple processes/instances.
