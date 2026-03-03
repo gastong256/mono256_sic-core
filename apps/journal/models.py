@@ -1,0 +1,117 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
+
+from apps.common.models import TimeStampedModel
+from apps.companies.models import Company
+
+
+class JournalEntry(TimeStampedModel):
+    """
+    Represents a posted accounting journal entry (asiento contable) for a company.
+
+    Entries are immutable: once created they cannot be edited or deleted.
+    The double-entry accounting is enforced by hordak via the linked Transaction.
+    """
+
+    class SourceType(models.TextChoices):
+        MANUAL = "MANUAL", "Manual"
+        INVOICE = "INVOICE", "Factura"
+        RECEIPT = "RECEIPT", "Recibo"
+        OTHER = "OTHER", "Otro"
+
+    transaction = models.OneToOneField(
+        "hordak.Transaction",
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="journal_entry",
+        verbose_name="transacción",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name="journal_entries",
+        verbose_name="empresa",
+    )
+    entry_number = models.PositiveIntegerField(
+        verbose_name="número de asiento",
+        help_text="Correlativo por empresa, asignado automáticamente.",
+    )
+    date = models.DateField(verbose_name="fecha")
+    description = models.CharField(max_length=500, verbose_name="descripción")
+    source_type = models.CharField(
+        max_length=10,
+        choices=SourceType.choices,
+        default=SourceType.MANUAL,
+        verbose_name="tipo de comprobante",
+    )
+    source_ref = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="referencia",
+        help_text='Ej.: "Factura A-0001", "Recibo 00123".',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="journal_entries",
+        verbose_name="registrado por",
+    )
+
+    class Meta:
+        ordering = ["company", "entry_number"]
+        unique_together = [("company", "entry_number")]
+        verbose_name = "Asiento contable"
+        verbose_name_plural = "Asientos contables"
+
+    def __str__(self) -> str:
+        return f"{self.company} — Asiento #{self.entry_number}"
+
+    def save(self, *args, **kwargs) -> None:
+        if self.pk is not None:
+            raise ValidationError("Los asientos contables son inmutables.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs) -> None:
+        raise ValidationError("Los asientos contables no pueden eliminarse.")
+
+
+class JournalEntryLine(models.Model):
+    """
+    A single debit or credit line within a JournalEntry.
+
+    The amount is always positive; direction is determined by the type field.
+    """
+
+    class LineType(models.TextChoices):
+        DEBIT = "DEBIT", "Deudora"
+        CREDIT = "CREDIT", "Acreedora"
+
+    journal_entry = models.ForeignKey(
+        JournalEntry,
+        on_delete=models.PROTECT,
+        related_name="lines",
+        verbose_name="asiento",
+    )
+    account = models.ForeignKey(
+        "hordak.Account",
+        on_delete=models.PROTECT,
+        verbose_name="cuenta",
+    )
+    type = models.CharField(
+        max_length=6,
+        choices=LineType.choices,
+        verbose_name="tipo",
+    )
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        verbose_name="importe",
+    )
+
+    class Meta:
+        verbose_name = "Línea de asiento"
+        verbose_name_plural = "Líneas de asiento"
+
+    def __str__(self) -> str:
+        return f"{self.get_type_display()} {self.amount} — {self.account}"
