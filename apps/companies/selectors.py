@@ -6,13 +6,6 @@ from apps.users.models import User
 
 
 def list_companies(*, user) -> QuerySet[Company]:
-    """
-    Return companies visible to the given user.
-
-    Admin sees all companies.
-    Teacher sees own companies plus companies from students enrolled in their courses.
-    Student sees only own companies.
-    """
     if user.role == User.Role.ADMIN:
         return Company.objects.select_related("owner").all()
 
@@ -28,12 +21,6 @@ def list_companies(*, user) -> QuerySet[Company]:
 
 
 def get_company(*, pk: int, user) -> Company:
-    """
-    Return the company with the given pk, enforcing ownership rules.
-
-    Raises NotFound if the company does not exist.
-    Raises PermissionDenied if the user is a student who does not own it.
-    """
     try:
         company = Company.objects.select_related("owner").get(pk=pk)
     except Company.DoesNotExist:

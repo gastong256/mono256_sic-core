@@ -1,11 +1,3 @@
-"""
-Balance de Comprobación de Sumas y Saldos (Trial Balance) report service.
-
-Two-level table: level-2 (colectiva) subtotal rows containing level-3
-(subcuenta) rows. Only accounts with at least one movement in the period
-are included.
-"""
-
 import datetime
 from decimal import Decimal
 
@@ -18,11 +10,7 @@ _ZERO = Decimal("0")
 
 
 def _balance_pair(total_debit: Decimal, total_credit: Decimal) -> tuple[str | None, str | None]:
-    """
-    Return (debit_balance, credit_balance) formatted strings.
-
-    Exactly one is non-null unless both totals are equal (saldada).
-    """
+    """Return saldo deudor/acreedor representation for a row or subtotal."""
     net = total_debit - total_credit
     if net > _ZERO:
         return f"{net:.2f}", None
@@ -37,19 +25,9 @@ def get_trial_balance(
     date_from: datetime.date | None = None,
     date_to: datetime.date | None = None,
 ) -> dict:
-    """
-    Build the Balance de Comprobación de Sumas y Saldos for the given
-    company and date range.
-
-    DB queries (max 2):
-      1. Single annotated aggregation returning per-account totals
-      2. Earliest entry date lookup (only when date_from is not provided)
-
-    Returns an empty groups list if no data matches.
-    """
+    """Balance de Comprobación: grouped subtotals (colectivas) + movement accounts."""
     actual_date_to = date_to or datetime.date.today()
 
-    # 1. Single aggregating query: per-account totals for the period
     line_filter = Q(
         account__company_account__company=company,
         journal_entry__company=company,
@@ -77,12 +55,9 @@ def get_trial_balance(
         .order_by("account__full_code")
     )
 
-    # 2. actual_date_from — derive without extra query when possible
     if date_from:
         actual_date_from = date_from
     elif rows:
-        # Smallest date from already-fetched data not available (aggregation doesn't return it).
-        # Run a minimal extra query only when needed.
         first_date = (
             JournalEntryLine.objects.filter(
                 account__company_account__company=company,
@@ -110,8 +85,7 @@ def get_trial_balance(
             },
         }
 
-    # Build grouped structure in Python (no further DB queries)
-    groups: dict[int, dict] = {}  # keyed by parent_id (level-1 account PK)
+    groups: dict[int, dict] = {}
     grand_debit = _ZERO
     grand_credit = _ZERO
 
@@ -148,7 +122,6 @@ def get_trial_balance(
         grand_debit += total_debit
         grand_credit += total_credit
 
-    # Finalise groups and grand balance totals
     grand_debit_balance = _ZERO
     grand_credit_balance = _ZERO
     groups_data = []

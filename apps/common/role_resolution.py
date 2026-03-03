@@ -9,13 +9,6 @@ def resolve_teacher_for_actor(
     teacher_id: int | None,
     missing_teacher_id_message: str,
 ) -> User:
-    """
-    Resolve the teacher target for teacher/admin requests.
-
-    - Teacher actors always resolve to themselves.
-    - Admin actors must provide teacher_id.
-    - Other roles are rejected.
-    """
     if actor.role == User.Role.TEACHER:
         return actor
 

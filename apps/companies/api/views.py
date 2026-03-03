@@ -66,18 +66,10 @@ logger = structlog.get_logger(__name__)
     ),
 )
 class CompanyViewSet(viewsets.ModelViewSet):
-    """
-    CRUD ViewSet for Company.
-
-    Teachers see and can manage all companies.
-    Students can only create companies for themselves and manage their own.
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Return companies visible to the requesting user."""
-        # drf-spectacular calls get_queryset() during schema generation with a fake view.
+        # drf-spectacular calls this without a real request user while building schema.
         if getattr(self, "swagger_fake_view", False):
             from apps.companies.models import Company
 
@@ -85,17 +77,14 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return selectors.list_companies(user=self.request.user)
 
     def get_serializer_class(self):
-        """Use write serializer for mutations; read serializer for reads."""
         if self.action in ("create", "update", "partial_update"):
             return CompanyWriteSerializer
         return CompanySerializer
 
     def get_object(self):
-        """Retrieve company, enforcing ownership rules via selector."""
         return selectors.get_company(pk=self.kwargs["pk"], user=self.request.user)
 
     def create(self, request: Request, *args, **kwargs) -> Response:
-        """Create a new company owned by the requesting student."""
         serializer = CompanyWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -107,7 +96,6 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return Response(CompanySerializer(company).data, status=status.HTTP_201_CREATED)
 
     def update(self, request: Request, *args, **kwargs) -> Response:
-        """Update an existing company (owner or teacher)."""
         partial = kwargs.pop("partial", False)
         company = self.get_object()
 
@@ -119,7 +107,6 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return Response(CompanySerializer(company).data)
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
-        """Delete a company (owner or teacher)."""
         company = self.get_object()
         services.delete_company(company=company)
         logger.info("company_deleted", company_id=kwargs["pk"])

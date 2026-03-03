@@ -57,6 +57,5 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = True) -> None:
     root_logger.handlers = [handler]
     root_logger.setLevel(log_level)
 
-    # Silence noisy third-party loggers
     for noisy in ("uvicorn.access", "django.request"):
         logging.getLogger(noisy).setLevel(logging.WARNING)

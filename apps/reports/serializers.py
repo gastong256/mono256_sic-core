@@ -2,8 +2,7 @@ from rest_framework import serializers
 
 
 class ReportParamsSerializer(serializers.Serializer):
-    """Shared query-parameter validator for all three report endpoints."""
-
+    """Common date-range validation used across accounting reports."""
     date_from = serializers.DateField(
         required=False,
         input_formats=["%Y-%m-%d"],
@@ -26,8 +25,7 @@ class ReportParamsSerializer(serializers.Serializer):
 
 
 class LedgerParamsSerializer(ReportParamsSerializer):
-    """Query-parameter validator for the Libro Mayor endpoint."""
-
+    """Report params + optional account filter for Libro Mayor."""
     account_id = serializers.IntegerField(
         required=False,
         min_value=1,

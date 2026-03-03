@@ -7,7 +7,6 @@ environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
 DEBUG = True
 
-# Re-configure with console renderer for local development
 from config.logging import configure_logging  # noqa: E402
 
 configure_logging(log_level=LOG_LEVEL, json_logs=False)

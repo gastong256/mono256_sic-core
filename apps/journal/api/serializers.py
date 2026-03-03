@@ -6,8 +6,6 @@ from apps.journal.models import JournalEntry, JournalEntryLine
 
 
 class JournalEntryLineReadSerializer(serializers.ModelSerializer):
-    """Read serializer for a single journal entry line."""
-
     account_code = serializers.CharField(source="account.full_code", read_only=True)
     account_name = serializers.CharField(source="account.name", read_only=True)
 
@@ -18,8 +16,6 @@ class JournalEntryLineReadSerializer(serializers.ModelSerializer):
 
 
 class JournalEntryLineWriteSerializer(serializers.Serializer):
-    """Write serializer for a single journal entry line (used inside the create payload)."""
-
     account_id = serializers.IntegerField(help_text="ID of the level-3 account.")
     type = serializers.ChoiceField(
         choices=JournalEntryLine.LineType.choices,
@@ -40,8 +36,6 @@ class JournalEntryLineWriteSerializer(serializers.Serializer):
 
 
 class JournalEntryListSerializer(serializers.ModelSerializer):
-    """Read serializer for a journal entry in list view (no nested lines)."""
-
     created_by = serializers.CharField(source="created_by.username", read_only=True)
     total_debit = serializers.SerializerMethodField()
     total_credit = serializers.SerializerMethodField()
@@ -85,8 +79,6 @@ class JournalEntryListSerializer(serializers.ModelSerializer):
 
 
 class JournalEntryDetailSerializer(JournalEntryListSerializer):
-    """Read serializer for a journal entry in detail view (includes nested lines)."""
-
     lines = JournalEntryLineReadSerializer(many=True, read_only=True)
 
     class Meta(JournalEntryListSerializer.Meta):
@@ -95,8 +87,6 @@ class JournalEntryDetailSerializer(JournalEntryListSerializer):
 
 
 class JournalEntryCreateSerializer(serializers.Serializer):
-    """Write serializer for creating a new journal entry."""
-
     date = serializers.DateField(help_text="Accounting date of the entry.")
     description = serializers.CharField(
         max_length=500,
@@ -128,8 +118,6 @@ class JournalEntryCreateSerializer(serializers.Serializer):
 
 
 class JournalEntryReverseSerializer(serializers.Serializer):
-    """Optional payload when reversing a journal entry."""
-
     date = serializers.DateField(required=False, help_text="Date for the reversal entry.")
     description = serializers.CharField(
         max_length=500,

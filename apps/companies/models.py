@@ -5,13 +5,6 @@ from apps.common.models import TimeStampedModel
 
 
 class Company(TimeStampedModel):
-    """
-    Represents a simulated company managed by a student.
-
-    A student acts as a 'accounting firm' and can own one or more companies.
-    Teachers can view all companies; students can only access their own.
-    """
-
     name = models.CharField(max_length=255, verbose_name="name")
     tax_id = models.CharField(
         max_length=20,
@@ -44,13 +37,6 @@ class Company(TimeStampedModel):
 
 
 class CompanyAccount(models.Model):
-    """
-    Links a hordak Account (level-3 / MPTT level=2) to a Company.
-
-    Only leaf accounts (no children) created by students are linked here.
-    Level-1 and level-2 accounts are global and not linked to any company.
-    """
-
     account = models.OneToOneField(
         "hordak.Account",
         on_delete=models.CASCADE,

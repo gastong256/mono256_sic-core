@@ -20,8 +20,6 @@ logger = structlog.get_logger(__name__)
 
 
 class GlobalChartView(APIView):
-    """Return the global chart of accounts (levels 1 and 2, no company-specific data)."""
-
     permission_classes = [IsAuthenticatedForAccounts]
 
     @extend_schema(
@@ -38,18 +36,14 @@ class GlobalChartView(APIView):
         tags=["accounts"],
     )
     def get(self, request: Request) -> Response:
-        """Return the global chart of accounts as a nested tree."""
         tree = selectors.get_global_chart(user=request.user)
         return Response(tree)
 
 
 class CompanyAccountListCreateView(APIView):
-    """List all accounts for a company, or create a new level-3 account."""
-
     permission_classes = [IsAuthenticatedForAccounts]
 
     def _get_company(self, company_id: int, user):
-        """Resolve the company, raising 404 or 403 as appropriate."""
         return company_selectors.get_company(pk=company_id, user=user)
 
     @extend_schema(
@@ -68,7 +62,6 @@ class CompanyAccountListCreateView(APIView):
         tags=["accounts"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        """Return the company's full chart of accounts as a nested tree."""
         company = self._get_company(company_id, request.user)
         tree = selectors.get_company_chart(company=company, user=request.user)
         return Response(tree)
@@ -92,7 +85,6 @@ class CompanyAccountListCreateView(APIView):
         tags=["accounts"],
     )
     def post(self, request: Request, company_id: int) -> Response:
-        """Create a new level-3 account under the given company."""
         company = self._get_company(company_id, request.user)
 
         serializer = AccountCreateSerializer(data=request.data)
@@ -120,18 +112,9 @@ class CompanyAccountListCreateView(APIView):
 
 
 class CompanyAccountDetailView(APIView):
-    """Update or delete a single level-3 account belonging to a company."""
-
     permission_classes = [IsAuthenticatedForAccounts]
 
     def _get_account_and_company(self, company_id: int, account_id: int, user):
-        """
-        Resolve company and account, enforcing ownership.
-
-        Returns (account, company) tuple.
-        Raises 404 if the company or account is not found.
-        Raises 403 if the user does not have access to the company.
-        """
         from apps.companies.models import CompanyAccount
         from rest_framework.exceptions import NotFound
 
@@ -162,7 +145,6 @@ class CompanyAccountDetailView(APIView):
         tags=["accounts"],
     )
     def patch(self, request: Request, company_id: int, account_id: int) -> Response:
-        """Partially update a level-3 account (name and/or code)."""
         account, company = self._get_account_and_company(company_id, account_id, request.user)
 
         serializer = AccountUpdateSerializer(data=request.data)
@@ -204,7 +186,6 @@ class CompanyAccountDetailView(APIView):
         tags=["accounts"],
     )
     def delete(self, request: Request, company_id: int, account_id: int) -> Response:
-        """Delete a level-3 account (only if it has no transaction legs)."""
         account, company = self._get_account_and_company(company_id, account_id, request.user)
 
         services.delete_account(account=account, company=company)
@@ -239,8 +220,6 @@ class _TeacherResolverMixin:
 
 
 class TeacherAccountVisibilityListView(_TeacherResolverMixin, APIView):
-    """Read level-0/1 account visibility overrides for a teacher."""
-
     permission_classes = [IsAuthenticatedForAccounts]
 
     @extend_schema(
@@ -255,8 +234,6 @@ class TeacherAccountVisibilityListView(_TeacherResolverMixin, APIView):
 
 
 class TeacherAccountVisibilityDetailView(_TeacherResolverMixin, APIView):
-    """Update level-0/1 account visibility overrides for a teacher."""
-
     permission_classes = [IsAuthenticatedForAccounts]
 
     @extend_schema(

@@ -1,18 +1,3 @@
-"""
-Services for the accounts app.
-
-Business logic for creating, updating, and deleting hordak Accounts
-at MPTT level=2 (spec depth-3 / student subcuentas).
-
-Code format rules:
-  - Input from user: full code like "1.04.01"
-  - Regex: ^[1-9]\\.\\d{2}\\.\\d{2}$
-  - Local code stored in hordak: the last ".XX" segment (e.g. ".01")
-  - full_code is then computed by the PostgreSQL trigger
-
-Uniqueness is checked via Account.full_code (globally unique field).
-"""
-
 import re
 
 from django.db import IntegrityError, transaction
@@ -25,12 +10,11 @@ from apps.accounts.visibility import is_hidden_for_student
 from apps.companies.models import Company, CompanyAccount
 from apps.users.models import User
 
-# Regex for the full user-facing code: e.g. "1.04.01" or "2.06.03"
 ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
 
 
 def _validate_code_format(code: str) -> None:
-    """Raise ValidationError if the code does not match X.XX.XX format."""
+    """Angrisani/SIC code format for subcuentas: X.XX.XX."""
     if not ACCOUNT_CODE_RE.match(code):
         raise ValidationError(
             {"code": "Account code must match format X.XX.XX (e.g. 1.04.01)."}
@@ -38,7 +22,7 @@ def _validate_code_format(code: str) -> None:
 
 
 def _validate_code_unique(code: str, exclude_pk: int | None = None) -> None:
-    """Raise ValidationError if the full_code already exists in hordak."""
+    """Hordak full_code is global; duplicates are invalid across companies."""
     qs = Account.objects.filter(full_code=code)
     if exclude_pk is not None:
         qs = qs.exclude(pk=exclude_pk)
@@ -47,22 +31,13 @@ def _validate_code_unique(code: str, exclude_pk: int | None = None) -> None:
 
 
 def _extract_local_code(full_code: str) -> str:
-    """
-    Extract the local code portion from a full user-facing code.
-
-    "1.04.01"  →  ".01"  (the dot + last two digits)
-    """
+    """Convert full code to Hordak local segment (e.g. 1.04.01 -> .01)."""
     last_segment = full_code.rsplit(".", 1)[-1]
     return f".{last_segment}"
 
 
 def _validate_code_matches_parent(*, code: str, parent: Account) -> None:
-    """
-    Ensure the user-facing full code belongs to the provided parent account.
-
-    Example:
-      parent.full_code = "1.04"  -> valid child code must start with "1.04."
-    """
+    """Subcuenta must remain under its selected colectiva prefix."""
     if not parent.full_code:
         raise ValidationError({"parent_id": "Parent account has no full_code."})
 
@@ -83,19 +58,13 @@ def create_account(
     parent_id: int,
 ) -> Account:
     """
-    Create a new level-2 (MPTT) account for the given company.
+    Create company subcuenta under a global colectiva (MPTT level=1).
 
-    Validates:
-    - parent exists and is MPTT level=1 (spec depth-2)
-    - code format matches X.XX.XX
-    - code is globally unique in hordak (via full_code)
-
-    The local code stored in hordak is the last ".XX" segment of the full code.
-    The type and currencies are inherited from the parent.
+    Angrisani model used here:
+    - rubros/colectivas are global (levels 0/1)
+    - subcuentas are company-specific (level=2 in Hordak MPTT)
     """
     _validate_code_format(code)
-
-    # Validate parent
     try:
         parent = Account.objects.get(pk=parent_id)
     except Account.DoesNotExist:
@@ -138,12 +107,7 @@ def update_account(
     name: str | None = None,
     code: str | None = None,
 ) -> Account:
-    """
-    Update the name and/or full code of a level-2 account belonging to the company.
-
-    Raises ValidationError if the code is invalid or already taken.
-    Raises PermissionDenied if the account does not belong to the company.
-    """
+    """Update only movement accounts (level=2 leaf) linked to the given company."""
     from rest_framework.exceptions import PermissionDenied
 
     if not CompanyAccount.objects.filter(account=account, company=company).exists():
@@ -181,12 +145,7 @@ def update_account(
 
 @transaction.atomic
 def delete_account(*, account: Account, company: Company) -> None:
-    """
-    Delete a level-2 account belonging to the company.
-
-    Raises PermissionDenied if the account does not belong to the company.
-    Raises ConflictError (409) if the account has existing transaction legs.
-    """
+    """Delete subcuenta only if it has no posted legs (double-entry integrity)."""
     from rest_framework.exceptions import PermissionDenied
 
     try:

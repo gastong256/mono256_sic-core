@@ -9,13 +9,6 @@ DEFAULT_TENANT = "public"
 
 
 class TenantMiddleware:
-    """
-    Resolves tenant from X-Tenant-ID request header.
-    Falls back to "public" if the header is absent.
-    The resolved tenant_id is stored in a ContextVar so it is available
-    throughout the request lifecycle (logs, services, queries).
-    """
-
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 

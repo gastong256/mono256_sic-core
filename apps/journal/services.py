@@ -14,7 +14,7 @@ from apps.journal.models import JournalEntry, JournalEntryLine
 
 
 def _assert_books_open(*, company: Company, date: datetime.date) -> None:
-    """Ensure the requested accounting date is not in a closed period."""
+    """Hard stop for closed periods; entries are immutable after closing."""
     if company.books_closed_until and date <= company.books_closed_until:
         raise ConflictError(
             f"Books are closed until {company.books_closed_until}. "
@@ -24,14 +24,11 @@ def _assert_books_open(*, company: Company, date: datetime.date) -> None:
 
 def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
     """
-    Enforce all business rules on the entry lines before any DB write.
-
-    Rules checked:
-      1. At least one DEBIT and one CREDIT line.
-      2. Sum of DEBIT amounts equals sum of CREDIT amounts.
-      3. Every amount is strictly positive.
-      4. Every account is level-2 (MPTT), is a leaf node,
-         and belongs to the given company via CompanyAccount.
+    Validate Angrisani asiento rules before any write:
+    - at least one debit and one credit
+    - balanced totals
+    - positive amounts
+    - only company movement accounts (MPTT level=2 leaf)
     """
     if not lines:
         raise ValidationError(
@@ -65,7 +62,6 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
         line_type: str = line["type"]
         account_id: int = line["account_id"]
 
-        # Rule 5: positive amounts
         if amount <= 0:
             raise ValidationError(
                 "El importe de cada línea debe ser mayor a cero."
@@ -73,19 +69,16 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
 
         account = accounts[account_id]
 
-        # Rule 3: account must be MPTT level=2 (depth-3)
         if account.level != 2:
             raise ValidationError(
                 f"La cuenta {account.full_code} no es una cuenta de movimiento (nivel 3)."
             )
 
-        # Rule 4: account must be a leaf node
         if not account.is_leaf_node():
             raise ValidationError(
                 f"La cuenta {account.full_code} no es una cuenta de movimiento (tiene subcuentas)."
             )
 
-        # Rule 3: account must belong to this company
         if account_id not in company_account_ids:
             raise ValidationError(
                 f"La cuenta {account.full_code} no pertenece a esta empresa."
@@ -98,13 +91,11 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
             credit_total += amount
             has_credit = True
 
-    # Rule 2: minimum lines (at least one debit and one credit)
     if not has_debit or not has_credit:
         raise ValidationError(
             "El asiento debe tener al menos una línea deudora y una acreedora."
         )
 
-    # Rule 1: balanced entry
     if debit_total != credit_total:
         raise ValidationError(
             "El total de débitos debe ser igual al total de créditos."
@@ -113,13 +104,7 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
 
 
 def _next_entry_number(company: Company) -> int:
-    """
-    Return the next sequential entry number for the given company.
-
-    Uses select_for_update to avoid race conditions under concurrent requests.
-    Must be called inside an atomic block.
-    """
-    # Lock the company row first so first-entry races are also serialized.
+    """Sequential per-company numbering with row locks to avoid races."""
     Company.objects.select_for_update().filter(pk=company.pk).exists()
 
     last = (
@@ -142,15 +127,7 @@ def create_journal_entry(
     source_ref: str = "",
     lines: list[dict],
 ) -> JournalEntry:
-    """
-    Validate, post, and persist a new journal entry for the given company.
-
-    All business rules are checked before any write.
-    Creates a hordak Transaction + Legs for double-entry accounting,
-    then creates the JournalEntry and its JournalEntryLines atomically.
-
-    Raises ValidationError for any business rule violation.
-    """
+    """Create and post an immutable asiento (Hordak transaction + legs + mirror lines)."""
     _assert_books_open(company=company, date=date)
     accounts = _validate_lines(lines, company)
     next_number = _next_entry_number(company)
@@ -208,7 +185,7 @@ def reverse_journal_entry(
     date: datetime.date | None = None,
     description: str = "",
 ) -> JournalEntry:
-    """Create a contra-entry that fully reverses the original journal entry."""
+    """Create contra-entry by swapping debit/credit on every original line."""
     if original_entry.company_id != company.pk:
         raise ValidationError("Asiento contable no encontrado.")
 

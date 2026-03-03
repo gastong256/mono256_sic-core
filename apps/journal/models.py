@@ -7,13 +7,7 @@ from apps.companies.models import Company
 
 
 class JournalEntry(TimeStampedModel):
-    """
-    Represents a posted accounting journal entry (asiento contable) for a company.
-
-    Entries are immutable: once created they cannot be edited or deleted.
-    The double-entry accounting is enforced by hordak via the linked Transaction.
-    """
-
+    """Immutable accounting entry; once posted it cannot be edited or deleted."""
     class SourceType(models.TextChoices):
         MANUAL = "MANUAL", "Manual"
         INVOICE = "INVOICE", "Factura"
@@ -88,12 +82,7 @@ class JournalEntry(TimeStampedModel):
 
 
 class JournalEntryLine(models.Model):
-    """
-    A single debit or credit line within a JournalEntry.
-
-    The amount is always positive; direction is determined by the type field.
-    """
-
+    """Single debit/credit movement line with positive amount."""
     class LineType(models.TextChoices):
         DEBIT = "DEBIT", "Deudora"
         CREDIT = "CREDIT", "Acreedora"

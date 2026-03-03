@@ -12,7 +12,6 @@ DATABASES = {
     ),
 }
 
-# Speed up password hashing in tests
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"

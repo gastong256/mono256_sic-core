@@ -6,8 +6,6 @@ from apps.users.models import RegistrationCodeConfig, User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    """Admin interface for the custom User model."""
-
     list_display = ("username", "email", "first_name", "last_name", "role", "is_staff", "date_joined")
     list_filter = ("role", "is_staff", "is_active")
     search_fields = ("username", "email")

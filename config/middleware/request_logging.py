@@ -11,8 +11,6 @@ logger = structlog.get_logger("http")
 
 
 class RequestLoggingMiddleware:
-    """Emit structured logs for every HTTP request and flag slow responses."""
-
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
         self.enabled = settings.REQUEST_LOG_ENABLED

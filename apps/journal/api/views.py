@@ -19,8 +19,6 @@ logger = structlog.get_logger(__name__)
 
 
 class JournalEntryListCreateView(APIView):
-    """List journal entries for a company, or create and post a new one."""
-
     permission_classes = [IsAuthenticated]
 
     def _get_company(self, company_id: int, user):
@@ -84,8 +82,6 @@ class JournalEntryListCreateView(APIView):
 
 
 class JournalEntryDetailView(APIView):
-    """Retrieve a single journal entry with its lines."""
-
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -107,8 +103,6 @@ class JournalEntryDetailView(APIView):
 
 
 class JournalEntryReverseView(APIView):
-    """Create a contra-entry that reverses an existing journal entry."""
-
     permission_classes = [IsAuthenticated]
 
     @extend_schema(

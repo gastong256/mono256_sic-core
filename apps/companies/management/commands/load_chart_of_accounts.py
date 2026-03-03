@@ -1,26 +1,7 @@
-"""
-Management command to load the base chart of accounts for the SIC system.
-
-The chart follows the SIC 1 - Angrisani textbook (Argentine accounting).
-Running this command multiple times is idempotent: existing accounts are not duplicated.
-
-Hordak uses django-mptt (MPTTModel). Account levels:
-  level=0  → rubros      (depth-1 in spec): ACTIVO, PASIVO, etc.  global, admin-managed
-  level=1  → colectivas  (depth-2 in spec): Caja, Bancos, etc.   global, admin-managed
-  level=2  → subcuentas  (depth-3 in spec): created by students per company
-
-full_code is computed by a PostgreSQL trigger as string_agg(code, '') over ancestors.
-To get full_code "1.04", the local codes must be: root code="1", child code=".04".
-"""
-
 from django.core.management.base import BaseCommand
 
 from hordak.models import Account
 
-# Chart of accounts data.
-# Each entry: (root_local_code, name, account_type, [(child_local_code, child_name), ...])
-# Root local codes: "1"–"5"
-# Child local codes: ".01", ".02", ... (dot-prefixed so trigger produces "1.01", "2.03", etc.)
 CHART: list[tuple[str, str, str, list[tuple[str, str]]]] = [
     (
         "1",
@@ -102,8 +83,6 @@ CHART: list[tuple[str, str, str, list[tuple[str, str]]]] = [
 
 
 class Command(BaseCommand):
-    """Load the base chart of accounts (idempotent)."""
-
     help = (
         "Load the base chart of accounts for the SIC system (levels 1 and 2). "
         "Safe to run multiple times: existing accounts are not duplicated."
@@ -138,7 +117,7 @@ class Command(BaseCommand):
             )
 
     def _ensure_root(self, code: str, name: str, account_type: str) -> tuple[Account, bool]:
-        """Get or create a root account (MPTT level=0, no parent)."""
+        # Hordak full_code is built by trigger from local code segments.
         try:
             account = Account.objects.get(code=code, parent=None)
             return account, False
@@ -152,7 +131,7 @@ class Command(BaseCommand):
             return account, True
 
     def _ensure_child(self, parent: Account, code: str, name: str) -> tuple[Account, bool]:
-        """Get or create a child account (MPTT level=1) under the given parent."""
+        # Child local codes keep dot-prefix format (e.g. ".04") for trigger composition.
         try:
             account = Account.objects.get(code=code, parent=parent)
             return account, False

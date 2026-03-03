@@ -1,11 +1,3 @@
-"""
-Libro Mayor (General Ledger) report service.
-
-One account card per level-3 account belonging to the company,
-showing every movement chronologically with a running balance.
-Implements the "Mayor Americano" format with opening balance.
-"""
-
 import datetime
 from collections import defaultdict
 from decimal import Decimal
@@ -19,19 +11,12 @@ from apps.journal.models import JournalEntryLine
 
 _ZERO = Decimal("0")
 
-# Account types whose normal balance is DEBIT (debit increases, credit decreases)
 _DEBIT_NORMAL = frozenset({"AS", "EX"})
-# Account types whose normal balance is CREDIT (credit increases, debit decreases)
 _CREDIT_NORMAL = frozenset({"LI", "EQ", "IN"})
 
 
 def _balance_delta(account_type: str, debit: Decimal, credit: Decimal) -> Decimal:
-    """
-    Return the signed net balance impact for a given account type.
-
-    For debit-normal accounts (AS, EX): debit raises the balance, credit lowers it.
-    For credit-normal accounts (LI, EQ, IN): credit raises, debit lowers.
-    """
+    """Apply normal-balance convention (debit-normal vs credit-normal accounts)."""
     if account_type in _DEBIT_NORMAL:
         return debit - credit
     return credit - debit
@@ -44,26 +29,11 @@ def get_ledger(
     date_to: datetime.date | None = None,
     account_id: int | None = None,
 ) -> dict:
-    """
-    Build the Libro Mayor report for the given company and date range.
-
-    DB queries (max 3):
-      1. Company accounts
-      2. Opening balances aggregate (only when date_from is provided)
-      3. All period movements (single ordered query, grouped in Python)
-
-    All company accounts appear regardless of whether they have movements
-    in the period; accounts with no movements will have an empty movements
-    list and period totals of zero.
-
-    Raises ValidationError (400) if account_id is provided but does not
-    belong to the company.
-    """
+    """Libro Mayor (Mayor Americano): opening, movements, and closing balance by account."""
     from rest_framework.exceptions import ValidationError
 
     actual_date_to = date_to or datetime.date.today()
 
-    # 1. Company accounts (query 1)
     account_qs = Account.objects.filter(
         company_account__company=company
     ).order_by("full_code")
@@ -85,7 +55,6 @@ def get_ledger(
             "accounts": [],
         }
 
-    # 2. Opening balances — aggregate all lines before date_from (query 2, conditional)
     opening_balances: dict[int, Decimal] = {pk: _ZERO for pk in account_ids}
     if date_from:
         opening_rows = (
@@ -106,7 +75,6 @@ def get_ledger(
             acct = account_map[row["account_id"]]
             opening_balances[acct.pk] = _balance_delta(acct.type, debit, credit)
 
-    # 3. Period movements — single ordered query (query 3)
     movement_filter = Q(
         account_id__in=account_ids,
         journal_entry__company=company,
@@ -125,7 +93,6 @@ def get_ledger(
     for line in movements_qs:
         movements_by_account[line.account_id].append(line)
 
-    # Derive actual_date_from without an extra query
     if date_from:
         actual_date_from = date_from
     else:
@@ -136,7 +103,6 @@ def get_ledger(
         ]
         actual_date_from = min(all_dates) if all_dates else actual_date_to
 
-    # 4. Build account cards (pure Python)
     accounts_data = []
     for account in accounts:
         opening = opening_balances[account.pk]

@@ -1,10 +1,3 @@
-"""
-Libro Diario (Journal Book) report service.
-
-Chronological list of all journal entries within a date range,
-each with its full set of lines and per-entry totals.
-"""
-
 import datetime
 from decimal import Decimal
 
@@ -20,14 +13,7 @@ def get_journal_book(
     date_from: datetime.date | None = None,
     date_to: datetime.date | None = None,
 ) -> dict:
-    """
-    Build the Libro Diario report for the given company and date range.
-
-    DB queries: 3 (entries, prefetch lines, prefetch accounts) —
-    bounded regardless of the number of entries.
-
-    Returns an empty entries list if no data matches, not an error.
-    """
+    """Libro Diario: chronological entries with full lines and per-entry totals."""
     actual_date_to = date_to or datetime.date.today()
 
     qs = (

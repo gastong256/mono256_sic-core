@@ -30,8 +30,6 @@ _DATE_PARAMS = [
 
 
 class JournalBookView(APIView):
-    """Libro Diario — chronological list of journal entries with their lines."""
-
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -67,8 +65,6 @@ class JournalBookView(APIView):
 
 
 class LedgerView(APIView):
-    """Libro Mayor — per-account movement cards with running balance."""
-
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -114,8 +110,6 @@ class LedgerView(APIView):
 
 
 class TrialBalanceView(APIView):
-    """Balance de Comprobación de Sumas y Saldos."""
-
     permission_classes = [IsAuthenticated]
 
     @extend_schema(

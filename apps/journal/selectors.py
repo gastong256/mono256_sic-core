@@ -6,7 +6,6 @@ from apps.journal.models import JournalEntry
 
 
 def list_journal_entries(*, company: Company) -> QuerySet[JournalEntry]:
-    """Return all journal entries for a company ordered by entry_number."""
     return (
         JournalEntry.objects.filter(company=company)
         .select_related("created_by", "reversal_of", "reversed_by")
@@ -16,11 +15,6 @@ def list_journal_entries(*, company: Company) -> QuerySet[JournalEntry]:
 
 
 def get_journal_entry(*, pk: int, company: Company) -> JournalEntry:
-    """
-    Return the journal entry with the given pk belonging to the given company.
-
-    Raises NotFound if the entry does not exist or belongs to a different company.
-    """
     try:
         return (
             JournalEntry.objects.select_related("created_by", "reversal_of", "reversed_by")

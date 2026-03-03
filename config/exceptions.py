@@ -10,8 +10,6 @@ from rest_framework.views import exception_handler as drf_exception_handler
 
 
 class ConflictError(APIException):
-    """HTTP 409 Conflict — raised when a resource state prevents the operation."""
-
     status_code = 409
     default_detail = "Resource conflict."
     default_code = "conflict"
@@ -71,7 +69,6 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
 
 
 def _request_handler(request: Request, exc: Exception) -> Response:
-    """Handler for non-DRF 500s raised inside views."""
     return Response(
         {"error": {"code": "internal_error", "message": "An unexpected error occurred.", "detail": None}},
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,

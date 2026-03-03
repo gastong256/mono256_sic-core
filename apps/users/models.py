@@ -5,15 +5,7 @@ from apps.common.models import TimeStampedModel
 
 
 class User(AbstractUser):
-    """
-    Custom user model extending Django's AbstractUser.
-
-    Role-based access:
-    - admin: platform-level admins (must keep is_staff=True)
-    - teacher: course-level supervisors
-    - student: operational accounting users
-    """
-
+    """Role-aware user model: admin, teacher, student."""
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
         TEACHER = "teacher", "Teacher"
@@ -35,6 +27,7 @@ class User(AbstractUser):
         return self.username
 
     def save(self, *args, **kwargs) -> None:
+        # Keep Django admin access aligned with explicit role model.
         if self.is_superuser and self.role != self.Role.ADMIN:
             self.role = self.Role.ADMIN
         if self.role == self.Role.ADMIN:
@@ -57,10 +50,7 @@ class User(AbstractUser):
 
 
 class RegistrationCodeConfig(TimeStampedModel):
-    """
-    Singleton-like configuration for the global rotating registration code.
-    """
-
+    """Global registration-code settings (window + previous window policy)."""
     salt = models.CharField(max_length=128, unique=True)
     window_minutes = models.PositiveSmallIntegerField(default=60)
     allow_previous_window = models.BooleanField(default=True)

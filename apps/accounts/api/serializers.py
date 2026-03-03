@@ -6,8 +6,6 @@ ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
 
 
 class AccountCreateSerializer(serializers.Serializer):
-    """Serializer for creating a new level-3 account under a company."""
-
     name = serializers.CharField(
         max_length=255,
         help_text="Human-readable account name.",
@@ -21,7 +19,6 @@ class AccountCreateSerializer(serializers.Serializer):
     )
 
     def validate_code(self, value: str) -> str:
-        """Validate that the code matches the required X.XX.XX format."""
         if not ACCOUNT_CODE_RE.match(value):
             raise serializers.ValidationError(
                 "Account code must match format X.XX.XX (e.g. 1.04.01)."
@@ -30,8 +27,6 @@ class AccountCreateSerializer(serializers.Serializer):
 
 
 class AccountUpdateSerializer(serializers.Serializer):
-    """Serializer for partially updating a level-3 account (name and/or code)."""
-
     name = serializers.CharField(
         max_length=255,
         required=False,
@@ -44,7 +39,6 @@ class AccountUpdateSerializer(serializers.Serializer):
     )
 
     def validate_code(self, value: str) -> str:
-        """Validate that the code matches the required X.XX.XX format."""
         if not ACCOUNT_CODE_RE.match(value):
             raise serializers.ValidationError(
                 "Account code must match format X.XX.XX (e.g. 1.04.01)."
@@ -52,7 +46,6 @@ class AccountUpdateSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs: dict) -> dict:
-        """Ensure at least one field is provided."""
         if not attrs.get("name") and not attrs.get("code"):
             raise serializers.ValidationError(
                 "At least one of 'name' or 'code' must be provided."

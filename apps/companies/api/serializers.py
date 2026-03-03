@@ -4,8 +4,6 @@ from apps.companies.models import Company
 
 
 class CompanySerializer(serializers.ModelSerializer):
-    """Read serializer for Company instances."""
-
     owner_username = serializers.CharField(source="owner.username", read_only=True)
     account_count = serializers.SerializerMethodField()
 
@@ -31,13 +29,10 @@ class CompanySerializer(serializers.ModelSerializer):
         ]
 
     def get_account_count(self, obj: Company) -> int:
-        """Return the number of level-3 accounts linked to this company."""
         return obj.accounts.count()
 
 
 class CompanyWriteSerializer(serializers.Serializer):
-    """Write serializer for creating or updating a Company."""
-
     name = serializers.CharField(max_length=255, help_text="Company name.")
     tax_id = serializers.CharField(
         max_length=20,

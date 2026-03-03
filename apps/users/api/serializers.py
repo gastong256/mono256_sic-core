@@ -5,8 +5,6 @@ from apps.users.models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Read serializer for the authenticated user."""
-
     role = serializers.CharField(read_only=True)
     course_id = serializers.SerializerMethodField()
 
@@ -35,8 +33,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.Serializer):
-    """Write serializer for updating the authenticated user's profile."""
-
     email = serializers.EmailField(required=False)
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
