@@ -59,4 +59,5 @@ urlpatterns = [
     path("api/v1/", include("apps.companies.api.urls", namespace="companies")),
     path("api/v1/", include("apps.accounts.api.urls", namespace="accounts")),
     path("api/v1/", include("apps.journal.api.urls", namespace="journal")),
+    path("api/v1/", include("apps.reports.urls", namespace="reports")),
 ]

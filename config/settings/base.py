@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.companies",
     "apps.accounts",
     "apps.journal",
+    "apps.reports",
     "apps.example",
 ]
 
