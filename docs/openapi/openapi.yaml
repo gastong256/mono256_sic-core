@@ -155,7 +155,6 @@ paths:
   /api/v1/accounts/visibility/:
     get:
       operationId: list_account_visibility_chart
-      description: Read level-0/1 account visibility overrides for a teacher.
       summary: Get account visibility overrides
       tags:
       - account-visibility
@@ -168,7 +167,6 @@ paths:
   /api/v1/accounts/visibility/{account_id}/:
     patch:
       operationId: update_account_visibility_override
-      description: Update level-0/1 account visibility overrides for a teacher.
       summary: Set account visibility override
       parameters:
       - in: path
@@ -391,11 +389,6 @@ paths:
   /api/v1/companies/:
     get:
       operationId: list_companies
-      description: |-
-        CRUD ViewSet for Company.
-
-        Teachers see and can manage all companies.
-        Students can only create companies for themselves and manage their own.
       summary: List companies
       parameters:
       - name: ordering
@@ -430,7 +423,6 @@ paths:
           description: ''
     post:
       operationId: create_company
-      description: Create a new company owned by the requesting student.
       summary: Create a company
       tags:
       - companies
@@ -725,11 +717,6 @@ paths:
   /api/v1/companies/{id}/:
     get:
       operationId: get_company
-      description: |-
-        CRUD ViewSet for Company.
-
-        Teachers see and can manage all companies.
-        Students can only create companies for themselves and manage their own.
       summary: Retrieve a company
       parameters:
       - in: path
@@ -752,7 +739,6 @@ paths:
           description: ''
     put:
       operationId: update_company
-      description: Update an existing company (owner or teacher).
       summary: Update a company
       parameters:
       - in: path
@@ -785,11 +771,6 @@ paths:
           description: Permission denied
     patch:
       operationId: partial_update_company
-      description: |-
-        CRUD ViewSet for Company.
-
-        Teachers see and can manage all companies.
-        Students can only create companies for themselves and manage their own.
       summary: Partially update a company
       parameters:
       - in: path
@@ -821,7 +802,6 @@ paths:
           description: Permission denied
     delete:
       operationId: delete_company
-      description: Delete a company (owner or teacher).
       summary: Delete a company
       parameters:
       - in: path
@@ -944,6 +924,28 @@ paths:
         '204':
           description: No content
   /api/v1/courses/{course_id}/enrollments/:
+    get:
+      operationId: courses_enrollments_list
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Enrollment'
+          description: ''
     post:
       operationId: courses_enrollments_create
       parameters:
@@ -1141,6 +1143,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegistrationCodeInfo'
           description: ''
+  /api/v1/teacher/students/available/:
+    get:
+      operationId: teacher_students_available_retrieve
+      parameters:
+      - in: query
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableStudentsPaginatedResponse'
+          description: ''
   /healthz:
     get:
       operationId: liveness
@@ -1181,7 +1212,6 @@ components:
   schemas:
     AccountCreate:
       type: object
-      description: Serializer for creating a new level-3 account under a company.
       properties:
         name:
           type: string
@@ -1198,9 +1228,54 @@ components:
       - code
       - name
       - parent_id
+    AvailableStudent:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+      required:
+      - first_name
+      - full_name
+      - id
+      - last_name
+      - username
+    AvailableStudentsPaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableStudent'
+      required:
+      - count
+      - next
+      - previous
+      - results
     Company:
       type: object
-      description: Read serializer for Company instances.
       properties:
         id:
           type: integer
@@ -1217,7 +1292,6 @@ components:
           readOnly: true
         account_count:
           type: integer
-          description: Return the number of level-3 accounts linked to this company.
           readOnly: true
         books_closed_until:
           type: string
@@ -1243,7 +1317,6 @@ components:
       - updated_at
     CompanyWrite:
       type: object
-      description: Write serializer for creating or updating a Company.
       properties:
         name:
           type: string
@@ -1369,7 +1442,6 @@ components:
       - name
     JournalEntryCreate:
       type: object
-      description: Write serializer for creating a new journal entry.
       properties:
         date:
           type: string
@@ -1399,8 +1471,6 @@ components:
       - lines
     JournalEntryDetail:
       type: object
-      description: Read serializer for a journal entry in detail view (includes nested
-        lines).
       properties:
         id:
           type: integer
@@ -1467,7 +1537,6 @@ components:
       - total_debit
     JournalEntryLineRead:
       type: object
-      description: Read serializer for a single journal entry line.
       properties:
         account_id:
           type: integer
@@ -1498,8 +1567,6 @@ components:
       - type
     JournalEntryLineWrite:
       type: object
-      description: Write serializer for a single journal entry line (used inside the
-        create payload).
       properties:
         account_id:
           type: integer
@@ -1523,7 +1590,6 @@ components:
       - type
     JournalEntryList:
       type: object
-      description: Read serializer for a journal entry in list view (no nested lines).
       properties:
         id:
           type: integer
@@ -1584,7 +1650,6 @@ components:
       - total_debit
     JournalEntryReverse:
       type: object
-      description: Optional payload when reversing a journal entry.
       properties:
         date:
           type: string
@@ -1619,8 +1684,6 @@ components:
             $ref: '#/components/schemas/Company'
     PatchedAccountUpdate:
       type: object
-      description: Serializer for partially updating a level-3 account (name and/or
-        code).
       properties:
         name:
           type: string
@@ -1640,7 +1703,6 @@ components:
           minimum: 1
     PatchedCompanyWrite:
       type: object
-      description: Write serializer for creating or updating a Company.
       properties:
         name:
           type: string
@@ -1670,7 +1732,6 @@ components:
           $ref: '#/components/schemas/RoleEnum'
     PatchedUserUpdate:
       type: object
-      description: Write serializer for updating the authenticated user's profile.
       properties:
         email:
           type: string
@@ -1915,7 +1976,6 @@ components:
         * `CREDIT` - Acreedora
     User:
       type: object
-      description: Read serializer for the authenticated user.
       properties:
         id:
           type: integer

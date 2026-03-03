@@ -45,6 +45,18 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class AvailableStudentSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name", "full_name"]
+        read_only_fields = fields
+
+    def get_full_name(self, obj: User) -> str:
+        return obj.get_full_name()
+
+
 class EnrollmentCreateSerializer(serializers.Serializer):
     student_id = serializers.IntegerField(min_value=1)
 
@@ -116,3 +128,10 @@ class TeacherCourseJournalEntriesResponseSerializer(serializers.Serializer):
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
     results = TeacherCourseJournalEntrySerializer(many=True)
+
+
+class AvailableStudentsPaginatedResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = AvailableStudentSerializer(many=True)

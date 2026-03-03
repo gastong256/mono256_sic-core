@@ -1,6 +1,7 @@
 import datetime
 
 import structlog
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
@@ -14,13 +15,15 @@ from apps.common.role_resolution import resolve_teacher_for_actor
 from apps.companies.models import Company
 from apps.courses import selectors, services
 from apps.courses.api.serializers import (
+    AvailableStudentsPaginatedResponseSerializer,
+    AvailableStudentSerializer,
     CourseSerializer,
-    TeacherCourseCompaniesResponseSerializer,
-    TeacherCourseJournalEntriesResponseSerializer,
-    TeacherCourseJournalEntrySerializer,
     CourseWriteSerializer,
     EnrollmentCreateSerializer,
     EnrollmentSerializer,
+    TeacherCourseCompaniesResponseSerializer,
+    TeacherCourseJournalEntriesResponseSerializer,
+    TeacherCourseJournalEntrySerializer,
 )
 from apps.courses.models import CourseEnrollment
 from apps.journal.models import JournalEntry
@@ -100,6 +103,16 @@ class CourseDetailView(APIView):
 
 class CourseEnrollmentCreateView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(tags=["courses"], responses={200: EnrollmentSerializer(many=True)})
+    def get(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        enrollments = (
+            CourseEnrollment.objects.filter(course=course)
+            .select_related("student")
+            .order_by("student__username")
+        )
+        return Response(EnrollmentSerializer(enrollments, many=True).data)
 
     @extend_schema(tags=["courses"], request=EnrollmentCreateSerializer, responses={201: EnrollmentSerializer})
     def post(self, request: Request, course_id: int) -> Response:
@@ -241,4 +254,49 @@ class TeacherCourseJournalEntriesView(APIView):
         paginator.page_size = 25
         page = paginator.paginate_queryset(qs, request)
         data = TeacherCourseJournalEntrySerializer(page, many=True).data
+        return paginator.get_paginated_response(data)
+
+
+class TeacherAvailableStudentsView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="course_id", type=int, required=True),
+            OpenApiParameter(name="search", type=str, required=False),
+            OpenApiParameter(name="page", type=int, required=False),
+        ],
+        responses={200: AvailableStudentsPaginatedResponseSerializer},
+    )
+    def get(self, request: Request) -> Response:
+        from rest_framework.exceptions import ValidationError
+
+        course_id_raw = request.query_params.get("course_id")
+        if not course_id_raw:
+            raise ValidationError({"course_id": "course_id is required."})
+        try:
+            course_id = int(course_id_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"course_id": "course_id must be an integer."}) from exc
+
+        selectors.get_course(pk=course_id, user=request.user)
+
+        students_qs = User.objects.filter(
+            role=User.Role.STUDENT,
+            course_enrollment__isnull=True,
+        ).order_by("username")
+
+        search = request.query_params.get("search")
+        if search:
+            students_qs = students_qs.filter(
+                Q(username__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 25
+        page = paginator.paginate_queryset(students_qs, request)
+        data = AvailableStudentSerializer(page, many=True).data
         return paginator.get_paginated_response(data)

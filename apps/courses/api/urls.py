@@ -5,6 +5,7 @@ from apps.courses.api.views import (
     CourseEnrollmentCreateView,
     CourseEnrollmentDeleteView,
     CourseListCreateView,
+    TeacherAvailableStudentsView,
     TeacherCourseCompaniesView,
     TeacherCourseJournalEntriesView,
 )
@@ -33,5 +34,10 @@ urlpatterns = [
         "teacher/courses/<int:course_id>/journal-entries/",
         TeacherCourseJournalEntriesView.as_view(),
         name="teacher-course-journal-entries",
+    ),
+    path(
+        "teacher/students/available/",
+        TeacherAvailableStudentsView.as_view(),
+        name="teacher-available-students",
     ),
 ]
