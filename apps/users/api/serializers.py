@@ -62,3 +62,10 @@ class RegistrationCodeInfoSerializer(serializers.Serializer):
     allow_previous_window = serializers.BooleanField()
     valid_from = serializers.DateTimeField()
     valid_until = serializers.DateTimeField()
+
+
+class UserListPaginatedSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = UserSerializer(many=True)

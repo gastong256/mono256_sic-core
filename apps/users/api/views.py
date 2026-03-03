@@ -11,6 +11,7 @@ from apps.common.permissions import IsAdminRole, IsTeacherOrAdminRole
 from apps.users import services
 from apps.users.api.serializers import (
     RegistrationCodeInfoSerializer,
+    UserListPaginatedSerializer,
     UserRegisterSerializer,
     UserRoleUpdateSerializer,
     UserSerializer,
@@ -149,7 +150,7 @@ class UserListView(APIView):
                 description="Case-insensitive username search.",
             ),
         ],
-        responses={200: UserSerializer(many=True)},
+        responses={200: UserListPaginatedSerializer},
         tags=["admin"],
     )
     def get(self, request: Request) -> Response:

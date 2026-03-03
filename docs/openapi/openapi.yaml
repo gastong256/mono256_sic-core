@@ -255,9 +255,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserListPaginated'
           description: ''
   /api/v1/admin/users/{user_id}/role/:
     patch:
@@ -1964,6 +1962,26 @@ components:
       - last_name
       - role
       - username
+    UserListPaginated:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+      required:
+      - count
+      - next
+      - previous
+      - results
     UserRegister:
       type: object
       properties:
