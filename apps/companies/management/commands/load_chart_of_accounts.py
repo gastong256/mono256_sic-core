@@ -5,8 +5,8 @@ The chart follows the SIC 1 - Angrisani textbook (Argentine accounting).
 Running this command multiple times is idempotent: existing accounts are not duplicated.
 
 Hordak uses django-mptt (MPTTModel). Account levels:
-  level=0  → rubros      (depth-1 in spec): ACTIVO, PASIVO, etc.  global, teacher-only
-  level=1  → colectivas  (depth-2 in spec): Caja, Bancos, etc.   global, teacher-only
+  level=0  → rubros      (depth-1 in spec): ACTIVO, PASIVO, etc.  global, admin-managed
+  level=1  → colectivas  (depth-2 in spec): Caja, Bancos, etc.   global, admin-managed
   level=2  → subcuentas  (depth-3 in spec): created by students per company
 
 full_code is computed by a PostgreSQL trigger as string_agg(code, '') over ancestors.

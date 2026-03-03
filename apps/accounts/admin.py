@@ -16,7 +16,7 @@ class AccountAdmin(admin.ModelAdmin):
     """
     Admin interface for hordak Account.
 
-    Only teachers (is_staff=True) can modify level-0 and level-1 accounts.
+    Only admin users (is_staff=True / role=admin) can modify level-0 and level-1 accounts.
     Level-2 accounts (student subcuentas) are read-only in admin.
     """
 
