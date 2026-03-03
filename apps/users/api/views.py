@@ -1,5 +1,5 @@
 import structlog
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -77,6 +77,30 @@ class UserListView(APIView):
     @extend_schema(
         operation_id="admin_list_users",
         summary="List users",
+        parameters=[
+            OpenApiParameter(
+                name="page",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Pagination page number.",
+            ),
+            OpenApiParameter(
+                name="role",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                enum=[User.Role.ADMIN, User.Role.TEACHER, User.Role.STUDENT],
+                description="Filter users by role.",
+            ),
+            OpenApiParameter(
+                name="search",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Case-insensitive username search.",
+            ),
+        ],
         responses={200: UserSerializer(many=True)},
         tags=["admin"],
     )
