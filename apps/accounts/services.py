@@ -21,7 +21,7 @@ from rest_framework.exceptions import ValidationError
 from config.exceptions import ConflictError
 from hordak.models import Account
 
-from apps.accounts.models import TeacherAccountVisibility
+from apps.accounts.visibility import is_hidden_for_student
 from apps.companies.models import Company, CompanyAccount
 from apps.users.models import User
 
@@ -54,21 +54,6 @@ def _extract_local_code(full_code: str) -> str:
     """
     last_segment = full_code.rsplit(".", 1)[-1]
     return f".{last_segment}"
-
-
-def _is_hidden_for_student(*, student: User, account_id: int) -> bool:
-    from apps.courses.models import CourseEnrollment
-
-    try:
-        enrollment = CourseEnrollment.objects.select_related("course__teacher").get(student=student)
-    except CourseEnrollment.DoesNotExist:
-        return False
-
-    return TeacherAccountVisibility.objects.filter(
-        teacher=enrollment.course.teacher,
-        account_id=account_id,
-        is_visible=False,
-    ).exists()
 
 
 def _validate_code_matches_parent(*, code: str, parent: Account) -> None:
@@ -120,7 +105,7 @@ def create_account(
         raise ValidationError(
             {"parent_id": "Parent must be a level-2 account (colectiva)."}
         )
-    if actor.role == User.Role.STUDENT and _is_hidden_for_student(student=actor, account_id=parent.pk):
+    if actor.role == User.Role.STUDENT and is_hidden_for_student(student=actor, account_id=parent.pk):
         raise ValidationError({"parent_id": "This account is hidden by your teacher."})
 
     _validate_code_matches_parent(code=code, parent=parent)
@@ -168,7 +153,7 @@ def update_account(
         raise ValidationError(
             {"account": "Only level-3 movement accounts can be updated."}
         )
-    if actor.role == User.Role.STUDENT and account.parent_id and _is_hidden_for_student(
+    if actor.role == User.Role.STUDENT and account.parent_id and is_hidden_for_student(
         student=actor,
         account_id=account.parent_id,
     ):

@@ -15,34 +15,15 @@ from django.db.models import Q
 from hordak.models import Account
 
 from apps.accounts.models import TeacherAccountVisibility
+from apps.accounts.visibility import hidden_account_ids_for_student
 from apps.companies.models import Company
 from apps.users.models import User
-
-
-def _resolve_teacher_for_student(*, user: User) -> User | None:
-    from apps.courses.models import CourseEnrollment
-
-    try:
-        enrollment = CourseEnrollment.objects.select_related("course__teacher").get(student=user)
-    except CourseEnrollment.DoesNotExist:
-        return None
-    return enrollment.course.teacher
 
 
 def _hidden_account_ids_for_user(*, user: User | None) -> set[int]:
     if user is None or user.role != User.Role.STUDENT:
         return set()
-
-    teacher = _resolve_teacher_for_student(user=user)
-    if teacher is None:
-        return set()
-
-    return set(
-        TeacherAccountVisibility.objects.filter(
-            teacher=teacher,
-            is_visible=False,
-        ).values_list("account_id", flat=True)
-    )
+    return hidden_account_ids_for_student(student=user)
 
 
 def _build_node(account: Account, children: list[dict] | None = None, is_visible: bool | None = None) -> dict:
