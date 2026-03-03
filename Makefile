@@ -76,5 +76,8 @@ docker-logs-prod: ## Tail production-like docker compose logs
 export-schema: ## Export OpenAPI schema to file
 	@bash scripts/export_schema.sh
 
+check-schema: ## Validate OpenAPI generation without writing artifact
+	DJANGO_SETTINGS_MODULE=config.settings.local uv run python manage.py spectacular --validate --fail-on-warn
+
 pre-commit: ## Run pre-commit hooks against all files
 	uv run pre-commit run --all-files

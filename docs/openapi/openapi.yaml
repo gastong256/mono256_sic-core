@@ -1,0 +1,2006 @@
+openapi: 3.0.3
+info:
+  title: SIC API
+  version: 0.1.0
+  description: Implementation of accounting system based in hordak and following SIC
+    (Andrisani) definitions.
+  contact:
+    name: gastong256
+paths:
+  /api/v1/accounts/chart/:
+    get:
+      operationId: get_global_chart
+      description: Returns the base chart of accounts (rubros and colectivas — levels
+        1 and 2). This is the shared, global plan with no company-specific subcuentas.
+      summary: Get global chart of accounts
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Nested account tree (level 0 and 1)
+        '401':
+          description: Authentication required
+  /api/v1/accounts/company/{company_id}/:
+    get:
+      operationId: get_company_chart
+      description: 'Returns the full chart of accounts for the given company: global
+        levels 1 and 2, plus the company''s own level-3 subcuentas.'
+      summary: Get company chart of accounts
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Nested account tree for the company
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+    post:
+      operationId: create_company_account
+      description: Creates a new subcuenta (level-3 account) under the given colectiva
+        (level-2 parent). Type and currency are inherited from the parent. Code must
+        follow X.XX.XX format and be globally unique.
+      summary: Create a level-3 account for a company
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          description: Created account node
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company or parent not found
+  /api/v1/accounts/company/{company_id}/{account_id}/:
+    patch:
+      operationId: update_company_account
+      description: Update the name and/or code of a company-owned level-3 account.
+      summary: Update a level-3 account
+      parameters:
+      - in: path
+        name: account_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccountUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Updated account node
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company or account not found
+    delete:
+      operationId: delete_company_account
+      description: Delete a company-owned level-3 account. Returns 409 Conflict if
+        the account has existing transaction legs.
+      summary: Delete a level-3 account
+      parameters:
+      - in: path
+        name: account_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No content
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company or account not found
+        '409':
+          description: Account has existing transactions
+  /api/v1/accounts/visibility/:
+    get:
+      operationId: list_account_visibility_chart
+      description: Read level-0/1 account visibility overrides for a teacher.
+      summary: Get account visibility overrides
+      tags:
+      - account-visibility
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Level-0/1 tree with is_visible flags
+  /api/v1/accounts/visibility/{account_id}/:
+    patch:
+      operationId: update_account_visibility_override
+      description: Update level-0/1 account visibility overrides for a teacher.
+      summary: Set account visibility override
+      parameters:
+      - in: path
+        name: account_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - account-visibility
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccountVisibilityUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Updated visibility tree
+  /api/v1/admin/registration-code/:
+    get:
+      operationId: admin_get_registration_code
+      summary: Get current registration code
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationCodeInfo'
+          description: ''
+  /api/v1/admin/registration-code/rotate/:
+    post:
+      operationId: rotate_registration_code
+      summary: Rotate registration code
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationCodeInfo'
+          description: ''
+  /api/v1/admin/users/:
+    get:
+      operationId: admin_list_users
+      summary: List users
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Pagination page number.
+      - in: query
+        name: role
+        schema:
+          type: string
+          enum:
+          - admin
+          - student
+          - teacher
+        description: Filter users by role.
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Case-insensitive username search.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/admin/users/{user_id}/role/:
+    patch:
+      operationId: admin_update_user_role
+      summary: Update user role
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRoleUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: get_me
+      summary: Get current user
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: update_me
+      summary: Update current user profile
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: register_student
+      summary: Register new student user
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        '400':
+          description: Validation error
+        '429':
+          description: Rate limited or cooldown active
+  /api/v1/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/companies/:
+    get:
+      operationId: list_companies
+      description: |-
+        CRUD ViewSet for Company.
+
+        Teachers see and can manage all companies.
+        Students can only create companies for themselves and manage their own.
+      summary: List companies
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCompanyList'
+          description: ''
+    post:
+      operationId: create_company
+      description: Create a new company owned by the requesting student.
+      summary: Create a company
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+        '400':
+          description: Validation error
+  /api/v1/companies/{company_id}/journal/:
+    get:
+      operationId: list_journal_entries
+      description: Returns all journal entries for the given company ordered by entry
+        number.
+      summary: List journal entries
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - journal
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntryList'
+          description: ''
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+    post:
+      operationId: create_journal_entry
+      description: Creates a new journal entry and immediately posts it. Debits must
+        equal credits. All accounts must belong to this company.
+      summary: Create and post a journal entry
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - journal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntryCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryDetail'
+          description: ''
+        '400':
+          description: Validation or business rule error
+        '409':
+          description: Closed period or concurrent conflict
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+  /api/v1/companies/{company_id}/journal/{entry_id}/:
+    get:
+      operationId: get_journal_entry
+      description: Returns full detail of a journal entry including all lines.
+      summary: Retrieve a journal entry
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: entry_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - journal
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryDetail'
+          description: ''
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company or entry not found
+  /api/v1/companies/{company_id}/journal/{entry_id}/reverse/:
+    post:
+      operationId: reverse_journal_entry
+      description: Creates a full contra-entry (debits<->credits) and links it to
+        the original entry.
+      summary: Reverse a journal entry
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: entry_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - journal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntryReverse'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryDetail'
+          description: ''
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company or entry not found
+        '409':
+          description: Already reversed or closed period
+  /api/v1/companies/{company_id}/reports/journal-book/:
+    get:
+      operationId: get_journal_book
+      description: Chronological list of all posted journal entries for the company
+        within the given date range, including all lines and grand totals.
+      summary: Libro Diario
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Libro Diario report
+        '400':
+          description: Invalid query parameters
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+  /api/v1/companies/{company_id}/reports/ledger/:
+    get:
+      operationId: get_ledger
+      description: One card per level-3 account belonging to the company, showing
+        every movement in the period chronologically with a running balance. Optionally
+        filtered to a single account via account_id.
+      summary: Libro Mayor
+      parameters:
+      - in: query
+        name: account_id
+        schema:
+          type: integer
+        description: Filter to a single level-3 account by its ID.
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Libro Mayor report
+        '400':
+          description: Invalid query parameters or account_id
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+  /api/v1/companies/{company_id}/reports/trial-balance/:
+    get:
+      operationId: get_trial_balance
+      description: 'Two-level table: level-2 (colectiva) subtotal rows containing
+        level-3 (subcuenta) rows, with total_debit, total_credit, and balance columns.
+        Only accounts with movements in the period are included.'
+      summary: Balance de Comprobación
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Balance de Comprobación report
+        '400':
+          description: Invalid query parameters
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+  /api/v1/companies/{id}/:
+    get:
+      operationId: get_company
+      description: |-
+        CRUD ViewSet for Company.
+
+        Teachers see and can manage all companies.
+        Students can only create companies for themselves and manage their own.
+      summary: Retrieve a company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+    put:
+      operationId: update_company
+      description: Update an existing company (owner or teacher).
+      summary: Update a company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+        '400':
+          description: Validation error
+        '403':
+          description: Permission denied
+    patch:
+      operationId: partial_update_company
+      description: |-
+        CRUD ViewSet for Company.
+
+        Teachers see and can manage all companies.
+        Students can only create companies for themselves and manage their own.
+      summary: Partially update a company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCompanyWrite'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+        '400':
+          description: Validation error
+        '403':
+          description: Permission denied
+    delete:
+      operationId: delete_company
+      description: Delete a company (owner or teacher).
+      summary: Delete a company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No content
+        '403':
+          description: Permission denied
+        '409':
+          description: Company has protected accounting records
+  /api/v1/courses/:
+    get:
+      operationId: courses_list
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+          description: ''
+    post:
+      operationId: courses_create
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+        '400':
+          description: Validation error
+  /api/v1/courses/{course_id}/:
+    get:
+      operationId: courses_retrieve
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    patch:
+      operationId: courses_partial_update
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseWrite'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    delete:
+      operationId: courses_destroy
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No content
+  /api/v1/courses/{course_id}/enrollments/:
+    post:
+      operationId: courses_enrollments_create
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/v1/courses/{course_id}/enrollments/{student_id}/:
+    delete:
+      operationId: courses_enrollments_destroy
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No content
+  /api/v1/items:
+    post:
+      operationId: create_item
+      summary: Create item
+      tags:
+      - items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
+        '400':
+          description: Validation error
+  /api/v1/items/{id}:
+    get:
+      operationId: get_item
+      summary: Get item by ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - items
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: ''
+        '404':
+          description: Item not found
+  /api/v1/ping:
+    get:
+      operationId: ping
+      summary: Health ping
+      tags:
+      - utility
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+          description: ''
+  /api/v1/teacher/courses/{course_id}/companies/:
+    get:
+      operationId: teacher_courses_companies_retrieve
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourseCompaniesResponse'
+          description: ''
+  /api/v1/teacher/courses/{course_id}/journal-entries/:
+    get:
+      operationId: teacher_courses_journal_entries_retrieve
+      parameters:
+      - in: query
+        name: company_id
+        schema:
+          type: integer
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+      - in: query
+        name: date_to
+        schema:
+          type: string
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: student_id
+        schema:
+          type: integer
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourseJournalEntriesResponse'
+          description: ''
+  /api/v1/teacher/registration-code/:
+    get:
+      operationId: teacher_get_registration_code
+      summary: Get current registration code
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationCodeInfo'
+          description: ''
+  /healthz:
+    get:
+      operationId: liveness
+      summary: Liveness probe
+      tags:
+      - health
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+          description: ''
+  /readyz:
+    get:
+      operationId: readiness
+      summary: Readiness probe
+      tags:
+      - health
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+          description: ''
+        '503':
+          description: Database unavailable
+components:
+  schemas:
+    AccountCreate:
+      type: object
+      description: Serializer for creating a new level-3 account under a company.
+      properties:
+        name:
+          type: string
+          description: Human-readable account name.
+          maxLength: 255
+        code:
+          type: string
+          description: Full account code in format X.XX.XX (e.g. 1.04.01).
+          maxLength: 10
+        parent_id:
+          type: integer
+          description: ID of the parent level-2 account (colectiva).
+      required:
+      - code
+      - name
+      - parent_id
+    Company:
+      type: object
+      description: Read serializer for Company instances.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        tax_id:
+          type: string
+          description: Simulated CUIT (optional).
+          maxLength: 20
+        owner_username:
+          type: string
+          readOnly: true
+        account_count:
+          type: integer
+          description: Return the number of level-3 accounts linked to this company.
+          readOnly: true
+        books_closed_until:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+          description: Entries on or before this date are locked.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - account_count
+      - books_closed_until
+      - created_at
+      - id
+      - name
+      - owner_username
+      - updated_at
+    CompanyWrite:
+      type: object
+      description: Write serializer for creating or updating a Company.
+      properties:
+        name:
+          type: string
+          description: Company name.
+          maxLength: 255
+        tax_id:
+          type: string
+          default: ''
+          description: Simulated CUIT (optional).
+          maxLength: 20
+      required:
+      - name
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+          nullable: true
+        teacher_id:
+          type: integer
+          readOnly: true
+        teacher_username:
+          type: string
+          readOnly: true
+        student_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - name
+      - student_count
+      - teacher_id
+      - teacher_username
+      - updated_at
+    CourseWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 50
+        teacher_id:
+          type: integer
+          minimum: 1
+      required:
+      - name
+    Enrollment:
+      type: object
+      properties:
+        student_id:
+          type: integer
+          readOnly: true
+        student_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - student_id
+      - student_username
+    EnrollmentCreate:
+      type: object
+      properties:
+        student_id:
+          type: integer
+          minimum: 1
+      required:
+      - student_id
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    ItemCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Human-readable item name.
+          maxLength: 255
+        description:
+          type: string
+          default: ''
+          description: Optional description.
+      required:
+      - name
+    JournalEntryCreate:
+      type: object
+      description: Write serializer for creating a new journal entry.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Accounting date of the entry.
+        description:
+          type: string
+          description: Glosa / description of the entry.
+          maxLength: 500
+        source_type:
+          allOf:
+          - $ref: '#/components/schemas/SourceTypeEnum'
+          default: MANUAL
+        source_ref:
+          type: string
+          default: ''
+          description: E.g. "Factura A-0001".
+          maxLength: 100
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryLineWrite'
+          description: At least one DEBIT and one CREDIT line, balanced.
+      required:
+      - date
+      - description
+      - lines
+    JournalEntryDetail:
+      type: object
+      description: Read serializer for a journal entry in detail view (includes nested
+        lines).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        entry_number:
+          type: integer
+          readOnly: true
+          title: Número de asiento
+          description: Correlativo por empresa, asignado automáticamente.
+        date:
+          type: string
+          format: date
+          readOnly: true
+          title: Fecha
+        description:
+          type: string
+          readOnly: true
+          title: Descripción
+        source_type:
+          allOf:
+          - $ref: '#/components/schemas/SourceTypeEnum'
+          readOnly: true
+          title: Tipo de comprobante
+        source_ref:
+          type: string
+          readOnly: true
+          title: Referencia
+          description: 'Ej.: "Factura A-0001", "Recibo 00123".'
+        created_by:
+          type: string
+          readOnly: true
+        reversal_of_id:
+          type: integer
+          readOnly: true
+        reversed_by_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        total_debit:
+          type: number
+          format: double
+          readOnly: true
+        total_credit:
+          type: number
+          format: double
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryLineRead'
+          readOnly: true
+      required:
+      - created_by
+      - date
+      - description
+      - entry_number
+      - id
+      - lines
+      - reversal_of_id
+      - reversed_by_id
+      - source_ref
+      - source_type
+      - total_credit
+      - total_debit
+    JournalEntryLineRead:
+      type: object
+      description: Read serializer for a single journal entry line.
+      properties:
+        account_id:
+          type: integer
+          title: Cuenta
+          readOnly: true
+        account_code:
+          type: string
+          readOnly: true
+        account_name:
+          type: string
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+          title: Tipo
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Importe
+      required:
+      - account_code
+      - account_id
+      - account_name
+      - amount
+      - type
+    JournalEntryLineWrite:
+      type: object
+      description: Write serializer for a single journal entry line (used inside the
+        create payload).
+      properties:
+        account_id:
+          type: integer
+          description: ID of the level-3 account.
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          description: |-
+            DEBIT or CREDIT.
+
+            * `DEBIT` - Deudora
+            * `CREDIT` - Acreedora
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          description: Positive amount.
+      required:
+      - account_id
+      - amount
+      - type
+    JournalEntryList:
+      type: object
+      description: Read serializer for a journal entry in list view (no nested lines).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        entry_number:
+          type: integer
+          readOnly: true
+          title: Número de asiento
+          description: Correlativo por empresa, asignado automáticamente.
+        date:
+          type: string
+          format: date
+          readOnly: true
+          title: Fecha
+        description:
+          type: string
+          readOnly: true
+          title: Descripción
+        source_type:
+          allOf:
+          - $ref: '#/components/schemas/SourceTypeEnum'
+          readOnly: true
+          title: Tipo de comprobante
+        source_ref:
+          type: string
+          readOnly: true
+          title: Referencia
+          description: 'Ej.: "Factura A-0001", "Recibo 00123".'
+        created_by:
+          type: string
+          readOnly: true
+        reversal_of_id:
+          type: integer
+          readOnly: true
+        reversed_by_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        total_debit:
+          type: number
+          format: double
+          readOnly: true
+        total_credit:
+          type: number
+          format: double
+          readOnly: true
+      required:
+      - created_by
+      - date
+      - description
+      - entry_number
+      - id
+      - reversal_of_id
+      - reversed_by_id
+      - source_ref
+      - source_type
+      - total_credit
+      - total_debit
+    JournalEntryReverse:
+      type: object
+      description: Optional payload when reversing a journal entry.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Date for the reversal entry.
+        description:
+          type: string
+          description: Optional description for the reversal entry.
+          maxLength: 500
+    PaginatedCompanyList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Company'
+    PatchedAccountUpdate:
+      type: object
+      description: Serializer for partially updating a level-3 account (name and/or
+        code).
+      properties:
+        name:
+          type: string
+          description: New account name.
+          maxLength: 255
+        code:
+          type: string
+          description: New full account code in format X.XX.XX (e.g. 1.04.02).
+          maxLength: 10
+    PatchedAccountVisibilityUpdate:
+      type: object
+      properties:
+        is_visible:
+          type: boolean
+        teacher_id:
+          type: integer
+          minimum: 1
+    PatchedCompanyWrite:
+      type: object
+      description: Write serializer for creating or updating a Company.
+      properties:
+        name:
+          type: string
+          description: Company name.
+          maxLength: 255
+        tax_id:
+          type: string
+          default: ''
+          description: Simulated CUIT (optional).
+          maxLength: 20
+    PatchedCourseWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 50
+        teacher_id:
+          type: integer
+          minimum: 1
+    PatchedUserRoleUpdate:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+    PatchedUserUpdate:
+      type: object
+      description: Write serializer for updating the authenticated user's profile.
+      properties:
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+    RegistrationCodeInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        window_minutes:
+          type: integer
+        allow_previous_window:
+          type: boolean
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+      required:
+      - allow_previous_window
+      - code
+      - valid_from
+      - valid_until
+      - window_minutes
+    RoleEnum:
+      enum:
+      - admin
+      - teacher
+      - student
+      type: string
+      description: |-
+        * `admin` - Admin
+        * `teacher` - Teacher
+        * `student` - Student
+    SourceTypeEnum:
+      enum:
+      - MANUAL
+      - INVOICE
+      - RECEIPT
+      - OTHER
+      type: string
+      description: |-
+        * `MANUAL` - Manual
+        * `INVOICE` - Factura
+        * `RECEIPT` - Recibo
+        * `OTHER` - Otro
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    TeacherCompanyItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tax_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - id
+      - name
+      - tax_id
+    TeacherCourseCompaniesResponse:
+      type: object
+      properties:
+        course_id:
+          type: integer
+        course_name:
+          type: string
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherStudentCompanies'
+      required:
+      - course_id
+      - course_name
+      - students
+    TeacherCourseJournalEntriesResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherCourseJournalEntry'
+      required:
+      - count
+      - next
+      - previous
+      - results
+    TeacherCourseJournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        entry_number:
+          type: integer
+          readOnly: true
+          title: Número de asiento
+          description: Correlativo por empresa, asignado automáticamente.
+        date:
+          type: string
+          format: date
+          readOnly: true
+          title: Fecha
+        description:
+          type: string
+          readOnly: true
+          title: Descripción
+        source_type:
+          allOf:
+          - $ref: '#/components/schemas/SourceTypeEnum'
+          readOnly: true
+          title: Tipo de comprobante
+        source_ref:
+          type: string
+          readOnly: true
+          title: Referencia
+          description: 'Ej.: "Factura A-0001", "Recibo 00123".'
+        company_id:
+          type: integer
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        student_id:
+          type: integer
+          readOnly: true
+        student_username:
+          type: string
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        reversal_of_id:
+          type: integer
+          readOnly: true
+        reversed_by_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryLineRead'
+          readOnly: true
+      required:
+      - company_id
+      - company_name
+      - created_by
+      - date
+      - description
+      - entry_number
+      - id
+      - lines
+      - reversal_of_id
+      - reversed_by_id
+      - source_ref
+      - source_type
+      - student_id
+      - student_username
+    TeacherStudentCompanies:
+      type: object
+      properties:
+        student_id:
+          type: integer
+        student_username:
+          type: string
+        student_full_name:
+          type: string
+        companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherCompanyItem'
+      required:
+      - companies
+      - student_full_name
+      - student_id
+      - student_username
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+    TypeEnum:
+      enum:
+      - DEBIT
+      - CREDIT
+      type: string
+      description: |-
+        * `DEBIT` - Deudora
+        * `CREDIT` - Acreedora
+    User:
+      type: object
+      description: Read serializer for the authenticated user.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        role:
+          type: string
+          readOnly: true
+        course_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_id
+      - date_joined
+      - email
+      - first_name
+      - id
+      - is_staff
+      - last_name
+      - role
+      - username
+    UserRegister:
+      type: object
+      properties:
+        username:
+          type: string
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 8
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        registration_code:
+          type: string
+          maxLength: 32
+      required:
+      - password
+      - password_confirm
+      - registration_code
+      - username
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

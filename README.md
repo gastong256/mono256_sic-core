@@ -160,6 +160,7 @@ Account codes use the hordak/MPTT local code convention:
 Base URL: `http://localhost:8000/api/v1`
 
 Interactive docs: `GET /api/docs` (Swagger UI) or `GET /api/redoc`.
+Repository artifact: `docs/openapi/openapi.yaml` (regenerate with `make export-schema`).
 
 ---
 
