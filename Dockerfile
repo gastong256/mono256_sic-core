@@ -27,6 +27,7 @@ COPY --from=builder /build/.venv .venv
 
 COPY apps/ apps/
 COPY config/ config/
+COPY scripts/run_gunicorn.sh scripts/run_gunicorn.sh
 COPY manage.py .
 
 RUN chown -R appuser:appgroup /app
@@ -35,11 +36,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "2", \
-     "--worker-class", "sync", \
-     "--timeout", "30", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "config.wsgi:application"]
+CMD ["/app/scripts/run_gunicorn.sh"]
