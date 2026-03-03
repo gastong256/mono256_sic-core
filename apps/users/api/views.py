@@ -1,6 +1,7 @@
 import structlog
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -68,3 +69,29 @@ class UserRoleUpdateView(APIView):
             role=user.role,
         )
         return Response(UserSerializer(user).data)
+
+
+class UserListView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(
+        operation_id="admin_list_users",
+        summary="List users",
+        responses={200: UserSerializer(many=True)},
+        tags=["admin"],
+    )
+    def get(self, request: Request) -> Response:
+        qs = User.objects.all().order_by("-date_joined").select_related("course_enrollment")
+
+        role = request.query_params.get("role")
+        if role:
+            qs = qs.filter(role=role)
+
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(username__icontains=search)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 25
+        page = paginator.paginate_queryset(qs, request)
+        return paginator.get_paginated_response(UserSerializer(page, many=True).data)
