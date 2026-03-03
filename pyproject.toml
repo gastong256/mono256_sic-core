@@ -19,6 +19,7 @@ dependencies = [
     "whitenoise>=6",
     "django-hordak>=2.0.0",
     "djangorestframework-simplejwt>=5.5.1",
+    "django-cors-headers>=4.9.0",
 ]
 
 [project.optional-dependencies]

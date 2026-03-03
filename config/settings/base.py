@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -10,6 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    CORS_ALLOWED_ORIGINS=(list, []),
+    JWT_ACCESS_TOKEN_LIFETIME_HOURS=(int, 1),
+    JWT_REFRESH_TOKEN_LIFETIME_DAYS=(int, 7),
     LOG_LEVEL=(str, "INFO"),
     OTEL_ENABLED=(bool, False),
 )
@@ -27,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
@@ -44,6 +49,7 @@ AUTH_USER_MODEL = "users.User"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "config.middleware.request_id.RequestIDMiddleware",
     "config.middleware.tenant.TenantMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -98,6 +104,17 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "origin",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-request-id",
+]
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
@@ -117,6 +134,11 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=env("JWT_ACCESS_TOKEN_LIFETIME_HOURS")),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env("JWT_REFRESH_TOKEN_LIFETIME_DAYS")),
 }
 
 SPECTACULAR_SETTINGS = {
