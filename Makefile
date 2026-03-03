@@ -14,6 +14,7 @@ run: ## Start local development server
 	$(MANAGE) runserver 0.0.0.0:$${PORT:-8000}
 
 test: ## Run test suite
+	@bash scripts/test_preflight.sh
 	uv run pytest $(ARGS)
 
 test-cov: ## Run tests with coverage report
@@ -57,6 +58,12 @@ docker-build: ## Build production Docker image
 
 docker-up: ## Start docker-compose services
 	docker compose up -d
+
+test-db-up: ## Start only postgres for local tests
+	docker compose up -d postgres
+
+test-db-down: ## Stop postgres test dependency
+	docker compose stop postgres
 
 docker-up-prod: ## Start production-like docker compose profile
 	docker compose -f docker-compose.prod.yml up -d

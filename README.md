@@ -517,12 +517,15 @@ config/
 make lint          # ruff linter
 make format        # black formatter
 make typecheck     # pyright
+make test-db-up    # start postgres dependency for tests
 make test          # pytest
 make test-cov      # pytest + coverage report
 make shell         # Django shell
 make migrate       # apply migrations
 make pre-commit    # run all pre-commit hooks
 ```
+
+`make test` runs a DB preflight check and fails fast if PostgreSQL is not reachable.
 
 Load the chart of accounts after a fresh DB:
 
