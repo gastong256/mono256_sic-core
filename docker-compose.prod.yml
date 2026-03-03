@@ -1,0 +1,66 @@
+services:
+  web:
+    build:
+      context: .
+      target: runtime
+    image: sic_core:prod
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: ${DATABASE_URL_PROD:-postgres://postgres:postgres@postgres:5432/sic_core}
+      REDIS_URL: ${REDIS_URL_PROD:-redis://redis:6379/0}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD:-change-me}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_PROD:-localhost,127.0.0.1}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS_PROD:-http://localhost}
+      JSON_LOGS: "true"
+      LOG_LEVEL: ${LOG_LEVEL_PROD:-INFO}
+      PORT: ${PORT:-8000}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY_PROD:-2}
+      GUNICORN_WORKER_CLASS: ${GUNICORN_WORKER_CLASS_PROD:-sync}
+      GUNICORN_THREADS: ${GUNICORN_THREADS_PROD:-1}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT_PROD:-30}
+      GUNICORN_GRACEFUL_TIMEOUT: ${GUNICORN_GRACEFUL_TIMEOUT_PROD:-30}
+      GUNICORN_KEEPALIVE: ${GUNICORN_KEEPALIVE_PROD:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/readyz', timeout=3)\" || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sic_core}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sic_core}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

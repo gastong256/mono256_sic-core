@@ -55,11 +55,20 @@ docker-build: ## Build production Docker image
 docker-up: ## Start docker-compose services
 	docker compose up -d
 
+docker-up-prod: ## Start production-like docker compose profile
+	docker compose -f docker-compose.prod.yml up -d
+
 docker-down: ## Stop docker-compose services
 	docker compose down
 
+docker-down-prod: ## Stop production-like docker compose profile
+	docker compose -f docker-compose.prod.yml down
+
 docker-logs: ## Tail docker-compose logs
 	docker compose logs -f
+
+docker-logs-prod: ## Tail production-like docker compose logs
+	docker compose -f docker-compose.prod.yml logs -f
 
 export-schema: ## Export OpenAPI schema to file
 	@bash scripts/export_schema.sh
