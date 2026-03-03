@@ -14,6 +14,9 @@ from apps.companies.models import Company
 from apps.courses import selectors, services
 from apps.courses.api.serializers import (
     CourseSerializer,
+    TeacherCourseCompaniesResponseSerializer,
+    TeacherCourseJournalEntriesResponseSerializer,
+    TeacherCourseJournalEntrySerializer,
     CourseWriteSerializer,
     EnrollmentCreateSerializer,
     EnrollmentSerializer,
@@ -154,7 +157,7 @@ class CourseEnrollmentDeleteView(APIView):
 class TeacherCourseCompaniesView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
-    @extend_schema(tags=["teacher"], responses={200: OpenApiResponse(description="Companies grouped by student")})
+    @extend_schema(tags=["teacher"], responses={200: TeacherCourseCompaniesResponseSerializer})
     def get(self, request: Request, course_id: int) -> Response:
         course = selectors.get_course(pk=course_id, user=request.user)
 
@@ -186,11 +189,14 @@ class TeacherCourseCompaniesView(APIView):
             {
                 "student_id": enrollment.student_id,
                 "student_username": enrollment.student.username,
+                "student_full_name": enrollment.student.get_full_name(),
                 "companies": companies_by_student.get(enrollment.student_id, []),
             }
             for enrollment in enrollments
         ]
-        return Response({"course_id": course.id, "course_name": course.name, "students": data})
+        payload = {"course_id": course.id, "course_name": course.name, "students": data}
+        response_serializer = TeacherCourseCompaniesResponseSerializer(payload)
+        return Response(response_serializer.data)
 
 
 class TeacherCourseJournalEntriesView(APIView):
@@ -203,8 +209,9 @@ class TeacherCourseJournalEntriesView(APIView):
             OpenApiParameter(name="date_to", type=str, required=False),
             OpenApiParameter(name="student_id", type=int, required=False),
             OpenApiParameter(name="company_id", type=int, required=False),
+            OpenApiParameter(name="page", type=int, required=False),
         ],
-        responses={200: OpenApiResponse(description="Paginated course journal entries")},
+        responses={200: TeacherCourseJournalEntriesResponseSerializer},
     )
     def get(self, request: Request, course_id: int) -> Response:
         from rest_framework.exceptions import ValidationError
@@ -215,6 +222,7 @@ class TeacherCourseJournalEntriesView(APIView):
         qs = (
             JournalEntry.objects.filter(company__owner_id__in=enrollments)
             .select_related("company", "company__owner", "created_by")
+            .prefetch_related("lines__account", "reversed_by")
             .order_by("-date", "-entry_number")
         )
 
@@ -243,21 +251,5 @@ class TeacherCourseJournalEntriesView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = 25
         page = paginator.paginate_queryset(qs, request)
-
-        data = [
-            {
-                "id": entry.id,
-                "entry_number": entry.entry_number,
-                "date": str(entry.date),
-                "description": entry.description,
-                "source_type": entry.source_type,
-                "source_ref": entry.source_ref,
-                "company_id": entry.company_id,
-                "company_name": entry.company.name,
-                "student_id": entry.company.owner_id,
-                "student_username": entry.company.owner.username,
-                "created_by": entry.created_by.username,
-            }
-            for entry in page
-        ]
+        data = TeacherCourseJournalEntrySerializer(page, many=True).data
         return paginator.get_paginated_response(data)
