@@ -12,6 +12,7 @@ from apps.accounts.api.serializers import (
     AccountUpdateSerializer,
     AccountVisibilityUpdateSerializer,
 )
+from apps.common.role_resolution import resolve_teacher_for_actor
 from apps.companies import selectors as company_selectors
 from apps.users.models import User
 
@@ -220,22 +221,21 @@ class CompanyAccountDetailView(APIView):
 
 class _TeacherResolverMixin:
     def _resolve_teacher(self, request: Request) -> User:
-        from rest_framework.exceptions import PermissionDenied, ValidationError
+        from rest_framework.exceptions import ValidationError
 
-        if request.user.role == User.Role.TEACHER:
-            return request.user
-        if request.user.role == User.Role.ADMIN:
-            teacher_id = request.query_params.get("teacher_id") or request.data.get("teacher_id")
-            if not teacher_id:
-                raise ValidationError({"teacher_id": "teacher_id is required for admin requests."})
+        teacher_id_raw = request.query_params.get("teacher_id") or request.data.get("teacher_id")
+        if teacher_id_raw:
             try:
-                teacher = User.objects.get(pk=teacher_id)
-            except User.DoesNotExist:
-                raise ValidationError({"teacher_id": "Teacher not found."})
-            if teacher.role != User.Role.TEACHER:
-                raise ValidationError({"teacher_id": "Selected user is not a teacher."})
-            return teacher
-        raise PermissionDenied("Teacher or admin role required.")
+                teacher_id = int(teacher_id_raw)
+            except (TypeError, ValueError) as exc:
+                raise ValidationError({"teacher_id": "teacher_id must be an integer."}) from exc
+        else:
+            teacher_id = None
+        return resolve_teacher_for_actor(
+            actor=request.user,
+            teacher_id=teacher_id,
+            missing_teacher_id_message="teacher_id is required for admin requests.",
+        )
 
 
 class TeacherAccountVisibilityListView(_TeacherResolverMixin, APIView):

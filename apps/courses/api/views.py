@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsTeacherOrAdminRole
+from apps.common.role_resolution import resolve_teacher_for_actor
 from apps.companies.models import Company
 from apps.courses import selectors, services
 from apps.courses.api.serializers import (
@@ -29,23 +30,11 @@ logger = structlog.get_logger(__name__)
 
 
 def _resolve_course_teacher(*, request_user: User, teacher_id: int | None) -> User:
-    if request_user.role == User.Role.ADMIN:
-        if teacher_id:
-            try:
-                teacher = User.objects.get(pk=teacher_id)
-            except User.DoesNotExist:
-                from rest_framework.exceptions import ValidationError
-
-                raise ValidationError({"teacher_id": "Teacher not found."})
-            if teacher.role != User.Role.TEACHER:
-                from rest_framework.exceptions import ValidationError
-
-                raise ValidationError({"teacher_id": "Selected user is not a teacher."})
-            return teacher
-        from rest_framework.exceptions import ValidationError
-
-        raise ValidationError({"teacher_id": "teacher_id is required for admin course creation."})
-    return request_user
+    return resolve_teacher_for_actor(
+        actor=request_user,
+        teacher_id=teacher_id,
+        missing_teacher_id_message="teacher_id is required for admin course creation.",
+    )
 
 
 class CourseListCreateView(APIView):
