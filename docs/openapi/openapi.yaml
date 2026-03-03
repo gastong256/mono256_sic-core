@@ -631,6 +631,47 @@ paths:
           description: Not the company owner or teacher
         '404':
           description: Company not found
+  /api/v1/companies/{company_id}/reports/journal-book.xlsx:
+    get:
+      operationId: export_journal_book_xlsx
+      summary: Export Libro Diario (XLSX)
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: XLSX file
+        '400':
+          description: Invalid query parameters
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
   /api/v1/companies/{company_id}/reports/ledger/:
     get:
       operationId: get_ledger
@@ -675,6 +716,52 @@ paths:
           description: Not the company owner or teacher
         '404':
           description: Company not found
+  /api/v1/companies/{company_id}/reports/ledger.xlsx:
+    get:
+      operationId: export_ledger_xlsx
+      summary: Export Libro Mayor (XLSX)
+      parameters:
+      - in: query
+        name: account_id
+        schema:
+          type: integer
+        description: Filter to a single level-3 account by its ID.
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: XLSX file
+        '400':
+          description: Invalid query parameters or account_id
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
   /api/v1/companies/{company_id}/reports/trial-balance/:
     get:
       operationId: get_trial_balance
@@ -706,6 +793,47 @@ paths:
       responses:
         '200':
           description: Balance de Comprobación report
+        '400':
+          description: Invalid query parameters
+        '401':
+          description: Authentication required
+        '403':
+          description: Not the company owner or teacher
+        '404':
+          description: Company not found
+  /api/v1/companies/{company_id}/reports/trial-balance.xlsx:
+    get:
+      operationId: export_trial_balance_xlsx
+      summary: Export Balance de Comprobación (XLSX)
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (YYYY-MM-DD). Defaults to the earliest entry date.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (YYYY-MM-DD). Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: XLSX file
         '400':
           description: Invalid query parameters
         '401':
