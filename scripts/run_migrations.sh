@@ -9,4 +9,9 @@ if [[ "${LOAD_BASE_CHART_ON_MIGRATE:-false}" == "true" ]]; then
   python manage.py load_chart_of_accounts
 fi
 
+if [[ "${COLLECTSTATIC_ON_MIGRATE:-true}" == "true" ]]; then
+  echo "Collecting static files..."
+  python manage.py collectstatic --noinput
+fi
+
 echo "Migrations completed."

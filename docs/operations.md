@@ -31,6 +31,7 @@ Recommended:
 - `ACCOUNT_VISIBILITY_CACHE_TIMEOUT=300`
 - `REGISTRATION_CONFIG_CACHE_TIMEOUT=300`
 - `GUNICORN_ACCESS_LOG_PROD=false` (avoid duplicate request logging)
+- `COLLECTSTATIC_ON_MIGRATE=true`
 
 ## 3. Deployment Procedure
 
@@ -58,6 +59,7 @@ Recommended:
 
 - All schema changes must be applied through Django migrations.
 - Never run app containers with pending migrations.
+- Pre-deploy should run `collectstatic` so `/static/` is materialized in the container.
 - For first bootstrap only, optionally set:
   - `LOAD_BASE_CHART_ON_MIGRATE_PROD=true`
 - Keep `LOAD_BASE_CHART_ON_MIGRATE_PROD=false` for normal deployments.
