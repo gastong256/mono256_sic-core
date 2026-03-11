@@ -10,25 +10,8 @@ permissions:
   id-token: write
 
 jobs:
-  detect:
-    name: Detect initialization
-    runs-on: ubuntu-latest
-    outputs:
-      initialized: ${{ steps.check.outputs.initialized }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: check
-        run: |
-          if [ -f .initialized ]; then
-            echo "initialized=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "initialized=false" >> "$GITHUB_OUTPUT"
-          fi
-
   release:
     name: Semantic release
-    needs: detect
-    if: needs.detect.outputs.initialized == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

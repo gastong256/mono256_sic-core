@@ -11,87 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Detect whether the template has been initialized ─────────────────────────
-  detect:
-    name: Detect initialization
-    runs-on: ubuntu-latest
-    outputs:
-      initialized: ${{ steps.check.outputs.initialized }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: check
-        run: |
-          if [ -f .initialized ]; then
-            echo "initialized=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "initialized=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  # ── Template validation (runs on uninitialized template repo) ─────────────────
-  validate-template:
-    name: Validate template
-    needs: detect
-    if: needs.detect.outputs.initialized == 'false'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: template_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v3
-        with:
-          version: "0.4.*"
-
-      - name: Initialize with dummy values
-        env:
-          PROJECT_NAME: "Template Test"
-          PROJECT_SLUG: "template_test"
-          SERVICE_NAME: "template-test"
-          OWNER: "ci-bot"
-          DESCRIPTION: "CI template validation"
-          PORT: "8000"
-        run: bash scripts/bootstrap.sh
-
-      - name: Install deps
-        run: uv sync
-
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Format check
-        run: uv run black --check .
-
-      - name: Typecheck
-        run: uv run pyright
-
-      - name: OpenAPI validation
-        run: make check-schema
-
-      - name: Production settings check
-        run: make check-prod-settings
-
-      - name: Run tests
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/template_test
-        run: uv run pytest
-
-  # ── Full CI (runs on initialized repos) ──────────────────────────────────────
+  # ── Product CI ───────────────────────────────────────────────────────────────
   ci:
     name: CI
-    needs: detect
-    if: needs.detect.outputs.initialized == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:

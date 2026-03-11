@@ -535,13 +535,13 @@ uv run python manage.py load_chart_of_accounts
 
 ## CI Quality Gates
 
-The CI workflow runs these minimum gates on every PR/push:
+The CI workflow runs these minimum gates on every PR and non-`main` push:
 - Ruff lint (`make lint`)
 - Black format check (`make format-check`)
 - Pyright type check (`make typecheck`)
 - OpenAPI validation (`make check-schema`)
 - Django production checks (`make check-prod-settings`)
-- Pytest (+ coverage on initialized repo)
+- Pytest + coverage
 
 ## Production-Like Compose Workflow
 
