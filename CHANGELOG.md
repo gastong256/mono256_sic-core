@@ -1,11 +1,111 @@
-# Changelog
+# CHANGELOG
 
-All notable changes to this project will be documented in this file.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## v0.1.0 (2026-03-11)
 
-Releases are automated via [python-semantic-release](https://python-semantic-release.readthedocs.io/)
-using [Conventional Commits](https://www.conventionalcommits.org/).
+### Bug Fixes
 
-<!-- semantic-release-generated content below -->
+- Add explicit typed response schemas for course companies and paginated journal entries
+  ([`5c54de7`](https://github.com/gastong256/mono256_sic-core/commit/5c54de784764ddc590c5dc68a893da69cf35209d))
+
+- Document admin users list as paginated response schema
+  ([`593dda4`](https://github.com/gastong256/mono256_sic-core/commit/593dda487a0c0a42e91a57c6875b4d7bd95b2224))
+
+- Document admin users list query params in OpenAPI (page, role, search)
+  ([`07e7a34`](https://github.com/gastong256/mono256_sic-core/commit/07e7a34e5a93280837be54875ccb3bf1833e2055))
+
+- Install python-semantic-release in workflow
+  ([`e6a9a02`](https://github.com/gastong256/mono256_sic-core/commit/e6a9a028e26504c3557993d4c26258c0e3ee9b5c))
+
+- Remove initialization gate and run semantic release on main
+  ([`803b6cc`](https://github.com/gastong256/mono256_sic-core/commit/803b6cccc38ebf5bef36443dd5d3b465cf115c50))
+
+### Chores
+
+- Add postgres preflight and local test db make targets
+  ([`a96997b`](https://github.com/gastong256/mono256_sic-core/commit/a96997b400215cba7b4d0aa927effcbcea423bab))
+
+- Add production migration job and harden database connection settings
+  ([`707625d`](https://github.com/gastong256/mono256_sic-core/commit/707625d87da20b8e0ec937e9f6d031834a24b6bb))
+
+- Add production operations runbook and link it from README
+  ([`1149ec9`](https://github.com/gastong256/mono256_sic-core/commit/1149ec93f58b722af70a7aace3e348b5f6f544b5))
+
+- Add production-like docker compose profile with web healthcheck and prod make targets
+  ([`714d5e7`](https://github.com/gastong256/mono256_sic-core/commit/714d5e7da0e7d46477a87782487257922bbbac7e))
+
+- Add Redis-backed shared cache with local fallback and test isolation
+  ([`5dcb3ae`](https://github.com/gastong256/mono256_sic-core/commit/5dcb3ae5042091f0b7d0b9ca7727f0123f993dba))
+
+- Add structured HTTP request logging with slow-request detection
+  ([`08b2c55`](https://github.com/gastong256/mono256_sic-core/commit/08b2c5577c8f4f88b8034634d8a00a1bb4fb579f))
+
+- Add uvlock openpyxl dependency
+  ([`82514b5`](https://github.com/gastong256/mono256_sic-core/commit/82514b542a835ad9dd579b6a9687b01950d9c839))
+
+- Align lint and typecheck gates with current repo baseline
+  ([`6551872`](https://github.com/gastong256/mono256_sic-core/commit/655187284784f45a05fee9eaec7eb418155eec79))
+
+- Enforce openapi and production deployment checks in quality gates
+  ([`b7db7b4`](https://github.com/gastong256/mono256_sic-core/commit/b7db7b47095600f08f6d250aaadb25f57d82dd4b))
+
+- Harden production settings with strict host/secret validation and secure defaults
+  ([`a0e08bb`](https://github.com/gastong256/mono256_sic-core/commit/a0e08bb3c20273d2a325ca77d7377295eaaac3b4))
+
+- Migrate dev dependencies to dependency-groups
+  ([`716aa27`](https://github.com/gastong256/mono256_sic-core/commit/716aa276c2fa2cf8eb0c28f09185d2e45535e895))
+
+- Parameterize gunicorn startup via env-driven entrypoint
+  ([`750971d`](https://github.com/gastong256/mono256_sic-core/commit/750971d5964df4953d0318e96224d1e2a33e765c))
+
+- Remove unused API permissions module
+  ([`8dde513`](https://github.com/gastong256/mono256_sic-core/commit/8dde5136d8c5e949240e8611258a47e1df259d43))
+
+- Version schema artifact and standardize export workflow
+  ([`ece7ab4`](https://github.com/gastong256/mono256_sic-core/commit/ece7ab48bf9d26d3121d37db4b7058bc6fd589f2))
+
+### Documentation
+
+- Clarify admin ownership in account management comments
+  ([`05e0038`](https://github.com/gastong256/mono256_sic-core/commit/05e0038e25ff73d51265cbcfffa3218c58dbaaef))
+
+### Features
+
+- Add cors support, /me endpoint, and configurable jwt lifetimes
+  ([`6bab123`](https://github.com/gastong256/mono256_sic-core/commit/6bab1239b746cb282bb940a64794551b6e30ba15))
+
+- Add journal flow and its migrations
+  ([`50fb0d3`](https://github.com/gastong256/mono256_sic-core/commit/50fb0d36fdd58604cd496286ee5c89b30c24d8da))
+
+- Add on-demand xlsx export endpoints for journal book, ledger, and trial balance with runtime
+  dependency guardrails
+  ([`d428ca4`](https://github.com/gastong256/mono256_sic-core/commit/d428ca47abecb5ee06558485fb65f532d39627f2))
+
+- Add paginated user listing endpoint with role/search filters
+  ([`bee1810`](https://github.com/gastong256/mono256_sic-core/commit/bee1810606e13d22dac5265b49a31e6837153226))
+
+- Add reports to summarize the information from the journals (journal, ledger, balance sheets)
+  ([`748fb0f`](https://github.com/gastong256/mono256_sic-core/commit/748fb0fda84bc49d86e60cf7c4bbd21dc30dbbd6))
+
+- Add role-based access, courses, teacher supervision, and account visibility controls
+  ([`560cd4d`](https://github.com/gastong256/mono256_sic-core/commit/560cd4d47e232c23581d4a3e32f7d75833a33d12))
+
+- Add student self-registration with rotating access code and anti-abuse throttling
+  ([`3d3dc6d`](https://github.com/gastong256/mono256_sic-core/commit/3d3dc6d39943e49dd02b4be3d51439b5d365effc))
+
+- Allow registration off available students
+  ([`eabdd82`](https://github.com/gastong256/mono256_sic-core/commit/eabdd82b4fa1a64cf21483dc25184ab8825ad7d4))
+
+- Harden producción y optimizar performance de API/reportes
+  ([`9ab87f9`](https://github.com/gastong256/mono256_sic-core/commit/9ab87f9c3b15e69e20668415cdb8a71debd1daa3))
+
+### Refactoring
+
+- Centralize student account-visibility resolution logic
+  ([`c611ae3`](https://github.com/gastong256/mono256_sic-core/commit/c611ae35f205289c7d68c7deddd14bf697320faa))
+
+- Centralize teacher resolution for admin/teacher scoped endpoints
+  ([`bafe682`](https://github.com/gastong256/mono256_sic-core/commit/bafe6827e8e3d2197a11ae6bc3486944e2479632))
+
+- Trim generic comments and keep domain-focused docstrings for SIC/Angrisani logic
+  ([`ebec3db`](https://github.com/gastong256/mono256_sic-core/commit/ebec3db249d6b194cb458943edfcf1cfe4f2d6a7))
