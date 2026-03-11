@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.6 (2026-03-11)
+
+### Bug Fixes
+
+- Run migrations and collectstatic on startup for free-tier platforms
+  ([`f442131`](https://github.com/gastong256/mono256_sic-core/commit/f4421316eb580f78ddf3e152562aa40f2cbf4e05))
+
+
 ## v0.1.5 (2026-03-11)
 
 ### Bug Fixes
