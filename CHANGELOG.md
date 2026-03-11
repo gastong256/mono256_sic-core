@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.3 (2026-03-11)
+
+### Bug Fixes
+
+- Keep venv path stable across build and runtime stages
+  ([`084a7f1`](https://github.com/gastong256/mono256_sic-core/commit/084a7f1fce283f3a6e3b5acb8f694c7ae6916af9))
+
+
 ## v0.1.2 (2026-03-11)
 
 ### Bug Fixes
