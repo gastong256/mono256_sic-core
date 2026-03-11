@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+MIGRATE_VERBOSITY="${MIGRATE_VERBOSITY:-1}"
+
 echo "Applying database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput --verbosity "${MIGRATE_VERBOSITY}"
 
 if [[ "${LOAD_BASE_CHART_ON_MIGRATE:-false}" == "true" ]]; then
   echo "Loading base chart of accounts..."
