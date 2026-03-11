@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.7 (2026-03-11)
+
+### Bug Fixes
+
+- Trigger Render deploy hook on version tags
+  ([`38c5a16`](https://github.com/gastong256/mono256_sic-core/commit/38c5a16fc2c2d6f9fb1525295dcd11b80e0095ba))
+
+
 ## v0.1.6 (2026-03-11)
 
 ### Bug Fixes
