@@ -11,7 +11,9 @@ class TestCompanySelectorsByRole:
     def test_teacher_sees_only_enrolled_student_companies(self):
         teacher = User.objects.create_user(username="teacher", password="x", role=User.Role.TEACHER)
         student_in = User.objects.create_user(username="s_in", password="x", role=User.Role.STUDENT)
-        student_out = User.objects.create_user(username="s_out", password="x", role=User.Role.STUDENT)
+        student_out = User.objects.create_user(
+            username="s_out", password="x", role=User.Role.STUDENT
+        )
 
         course = create_course(teacher=teacher, name="A")
         enroll_student(course=course, student=student_in)

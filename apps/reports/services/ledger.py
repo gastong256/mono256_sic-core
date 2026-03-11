@@ -34,9 +34,7 @@ def get_ledger(
 
     actual_date_to = date_to or datetime.date.today()
 
-    account_qs = Account.objects.filter(
-        company_account__company=company
-    ).order_by("full_code")
+    account_qs = Account.objects.filter(company_account__company=company).order_by("full_code")
 
     if account_id is not None:
         account_qs = account_qs.filter(pk=account_id)
@@ -97,9 +95,7 @@ def get_ledger(
         actual_date_from = date_from
     else:
         all_dates = [
-            line.journal_entry.date
-            for lines in movements_by_account.values()
-            for line in lines
+            line.journal_entry.date for lines in movements_by_account.values() for line in lines
         ]
         actual_date_from = min(all_dates) if all_dates else actual_date_to
 
@@ -121,33 +117,40 @@ def get_ledger(
                 credit_str = f"{line.amount:.2f}"
                 period_credit += line.amount
 
-            running += _balance_delta(account.type, line.amount if debit_str else _ZERO,
-                                      line.amount if credit_str else _ZERO)
-            movements_data.append({
-                "date": str(line.journal_entry.date),
-                "entry_number": line.journal_entry.entry_number,
-                "description": line.journal_entry.description,
-                "source_ref": line.journal_entry.source_ref,
-                "debit": debit_str,
-                "credit": credit_str,
-                "balance": f"{running:.2f}",
-            })
+            running += _balance_delta(
+                account.type,
+                line.amount if debit_str else _ZERO,
+                line.amount if credit_str else _ZERO,
+            )
+            movements_data.append(
+                {
+                    "date": str(line.journal_entry.date),
+                    "entry_number": line.journal_entry.entry_number,
+                    "description": line.journal_entry.description,
+                    "source_ref": line.journal_entry.source_ref,
+                    "debit": debit_str,
+                    "credit": credit_str,
+                    "balance": f"{running:.2f}",
+                }
+            )
 
         closing = opening + _balance_delta(account.type, period_debit, period_credit)
 
-        accounts_data.append({
-            "account_code": account.full_code,
-            "account_name": account.name,
-            "account_type": account.type,
-            "normal_balance": "DEBIT" if account.type in _DEBIT_NORMAL else "CREDIT",
-            "opening_balance": f"{opening:.2f}",
-            "movements": movements_data,
-            "period_totals": {
-                "total_debit": f"{period_debit:.2f}",
-                "total_credit": f"{period_credit:.2f}",
-            },
-            "closing_balance": f"{closing:.2f}",
-        })
+        accounts_data.append(
+            {
+                "account_code": account.full_code,
+                "account_name": account.name,
+                "account_type": account.type,
+                "normal_balance": "DEBIT" if account.type in _DEBIT_NORMAL else "CREDIT",
+                "opening_balance": f"{opening:.2f}",
+                "movements": movements_data,
+                "period_totals": {
+                    "total_debit": f"{period_debit:.2f}",
+                    "total_credit": f"{period_credit:.2f}",
+                },
+                "closing_balance": f"{closing:.2f}",
+            }
+        )
 
     return {
         "company": company.name,

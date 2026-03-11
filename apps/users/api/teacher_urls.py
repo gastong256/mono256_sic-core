@@ -5,5 +5,9 @@ from apps.users.api.views import TeacherRegistrationCodeInfoView
 app_name = "users-teacher"
 
 urlpatterns = [
-    path("registration-code/", TeacherRegistrationCodeInfoView.as_view(), name="registration-code-info"),
+    path(
+        "registration-code/",
+        TeacherRegistrationCodeInfoView.as_view(),
+        name="registration-code-info",
+    ),
 ]

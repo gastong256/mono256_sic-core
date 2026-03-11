@@ -16,9 +16,7 @@ ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
 def _validate_code_format(code: str) -> None:
     """Angrisani/SIC code format for subcuentas: X.XX.XX."""
     if not ACCOUNT_CODE_RE.match(code):
-        raise ValidationError(
-            {"code": "Account code must match format X.XX.XX (e.g. 1.04.01)."}
-        )
+        raise ValidationError({"code": "Account code must match format X.XX.XX (e.g. 1.04.01)."})
 
 
 def _validate_code_unique(code: str, exclude_pk: int | None = None) -> None:
@@ -71,10 +69,10 @@ def create_account(
         raise ValidationError({"parent_id": "Parent account not found."})
 
     if parent.level != 1:
-        raise ValidationError(
-            {"parent_id": "Parent must be a level-2 account (colectiva)."}
-        )
-    if actor.role == User.Role.STUDENT and is_hidden_for_student(student=actor, account_id=parent.pk):
+        raise ValidationError({"parent_id": "Parent must be a level-2 account (colectiva)."})
+    if actor.role == User.Role.STUDENT and is_hidden_for_student(
+        student=actor, account_id=parent.pk
+    ):
         raise ValidationError({"parent_id": "This account is hidden by your teacher."})
 
     _validate_code_matches_parent(code=code, parent=parent)
@@ -117,12 +115,14 @@ def update_account(
         raise PermissionDenied("This account does not belong to your company.")
 
     if account.level != 2 or not account.is_leaf_node():
-        raise ValidationError(
-            {"account": "Only level-3 movement accounts can be updated."}
+        raise ValidationError({"account": "Only level-3 movement accounts can be updated."})
+    if (
+        actor.role == User.Role.STUDENT
+        and account.parent_id
+        and is_hidden_for_student(
+            student=actor,
+            account_id=account.parent_id,
         )
-    if actor.role == User.Role.STUDENT and account.parent_id and is_hidden_for_student(
-        student=actor,
-        account_id=account.parent_id,
     ):
         raise ValidationError({"account": "This account is hidden by your teacher."})
 
@@ -162,8 +162,7 @@ def delete_account(*, account: Account, company: Company) -> None:
 
     if account.legs.exists():
         raise ConflictError(
-            "Cannot delete account with existing transactions. "
-            "Reverse the transactions first."
+            "Cannot delete account with existing transactions. " "Reverse the transactions first."
         )
 
     company_account.delete()

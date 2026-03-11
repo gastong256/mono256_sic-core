@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 class ReportParamsSerializer(serializers.Serializer):
     """Common date-range validation used across accounting reports."""
+
     date_from = serializers.DateField(
         required=False,
         input_formats=["%Y-%m-%d"],
@@ -26,6 +27,7 @@ class ReportParamsSerializer(serializers.Serializer):
 
 class LedgerParamsSerializer(ReportParamsSerializer):
     """Report params + optional account filter for Libro Mayor."""
+
     account_id = serializers.IntegerField(
         required=False,
         min_value=1,

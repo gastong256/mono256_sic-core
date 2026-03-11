@@ -12,7 +12,9 @@ from apps.users.models import User
 class TestAccountVisibility:
     def test_student_global_chart_hides_teacher_overridden_level1_account(self):
         root = Account.objects.create(code="1", name="ACTIVO", type="AS", currencies=["ARS"])
-        child = Account.objects.create(code=".01", name="Caja", parent=root, type="AS", currencies=["ARS"])
+        child = Account.objects.create(
+            code=".01", name="Caja", parent=root, type="AS", currencies=["ARS"]
+        )
 
         teacher = User.objects.create_user(username="teacher", password="x", role=User.Role.TEACHER)
         student = User.objects.create_user(username="student", password="x", role=User.Role.STUDENT)

@@ -36,10 +36,9 @@ def list_journal_entries(*, company: Company) -> QuerySet[JournalEntry]:
 
 def get_journal_entry(*, pk: int, company: Company) -> JournalEntry:
     try:
-        qs = (
-            JournalEntry.objects.select_related("created_by", "reversal_of", "reversed_by")
-            .prefetch_related("lines__account")
-        )
+        qs = JournalEntry.objects.select_related(
+            "created_by", "reversal_of", "reversed_by"
+        ).prefetch_related("lines__account")
         return _with_totals(qs).get(pk=pk, company=company)
     except JournalEntry.DoesNotExist:
         raise NotFound(detail="Asiento contable no encontrado.")

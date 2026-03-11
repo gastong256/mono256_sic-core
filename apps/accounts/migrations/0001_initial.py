@@ -10,24 +10,47 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('hordak', '0055_alter_leg_credit_alter_leg_currency_alter_leg_debit'),
+        ("hordak", "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TeacherAccountVisibility',
+            name="TeacherAccountVisibility",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_visible', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='teacher_visibility_overrides', to='hordak.account')),
-                ('teacher', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='account_visibility_overrides', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("is_visible", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "account",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="teacher_visibility_overrides",
+                        to="hordak.account",
+                    ),
+                ),
+                (
+                    "teacher",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="account_visibility_overrides",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['teacher', 'account'], name='accounts_te_teacher_96fc12_idx')],
-                'unique_together': {('teacher', 'account')},
+                "indexes": [
+                    models.Index(
+                        fields=["teacher", "account"], name="accounts_te_teacher_96fc12_idx"
+                    )
+                ],
+                "unique_together": {("teacher", "account")},
             },
         ),
     ]

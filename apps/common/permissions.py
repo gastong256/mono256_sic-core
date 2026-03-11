@@ -9,9 +9,7 @@ class IsAdminRole(BasePermission):
     def has_permission(self, request, view) -> bool:
         user = request.user
         return bool(
-            user
-            and user.is_authenticated
-            and getattr(user, "role", None) == User.Role.ADMIN
+            user and user.is_authenticated and getattr(user, "role", None) == User.Role.ADMIN
         )
 
 
@@ -33,9 +31,7 @@ class IsStudentRole(BasePermission):
     def has_permission(self, request, view) -> bool:
         user = request.user
         return bool(
-            user
-            and user.is_authenticated
-            and getattr(user, "role", None) == User.Role.STUDENT
+            user and user.is_authenticated and getattr(user, "role", None) == User.Role.STUDENT
         )
 
 

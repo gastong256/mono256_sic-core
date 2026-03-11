@@ -29,7 +29,9 @@ class TeacherAccountVisibility(models.Model):
         if self.teacher.role != User.Role.TEACHER:
             raise ValidationError({"teacher": "Visibility overrides require a teacher user."})
         if self.account.level > 1:
-            raise ValidationError({"account": "Only level-0 and level-1 accounts support visibility overrides."})
+            raise ValidationError(
+                {"account": "Only level-0 and level-1 accounts support visibility overrides."}
+            )
 
     def __str__(self) -> str:
         return f"{self.teacher.username} -> {self.account.full_code}: {self.is_visible}"

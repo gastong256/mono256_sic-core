@@ -6,23 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0003_backfill_admin_role'),
+        ("users", "0003_backfill_admin_role"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='RegistrationCodeConfig',
+            name="RegistrationCodeConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('salt', models.CharField(max_length=128, unique=True)),
-                ('window_minutes', models.PositiveSmallIntegerField(default=60)),
-                ('allow_previous_window', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("salt", models.CharField(max_length=128, unique=True)),
+                ("window_minutes", models.PositiveSmallIntegerField(default=60)),
+                ("allow_previous_window", models.BooleanField(default=True)),
             ],
             options={
-                'verbose_name': 'registration code config',
-                'verbose_name_plural': 'registration code configs',
+                "verbose_name": "registration code config",
+                "verbose_name_plural": "registration code configs",
             },
         ),
     ]

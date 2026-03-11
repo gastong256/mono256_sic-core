@@ -135,16 +135,18 @@ def get_trial_balance(
         grand_debit_balance += max(sub_net, _ZERO)
         grand_credit_balance += max(-sub_net, _ZERO)
 
-        groups_data.append({
-            "account_code": group["account_code"],
-            "account_name": group["account_name"],
-            "account_type": group["account_type"],
-            "subtotal_debit": f"{sub_debit:.2f}",
-            "subtotal_credit": f"{sub_credit:.2f}",
-            "subtotal_debit_balance": sub_debit_balance,
-            "subtotal_credit_balance": sub_credit_balance,
-            "accounts": group["accounts"],
-        })
+        groups_data.append(
+            {
+                "account_code": group["account_code"],
+                "account_name": group["account_name"],
+                "account_type": group["account_type"],
+                "subtotal_debit": f"{sub_debit:.2f}",
+                "subtotal_credit": f"{sub_credit:.2f}",
+                "subtotal_debit_balance": sub_debit_balance,
+                "subtotal_credit_balance": sub_credit_balance,
+                "accounts": group["accounts"],
+            }
+        )
 
     groups_data.sort(key=lambda g: g["account_code"] or "")
 

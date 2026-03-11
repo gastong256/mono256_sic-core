@@ -6,6 +6,7 @@ from apps.common.models import TimeStampedModel
 
 class User(AbstractUser):
     """Role-aware user model: admin, teacher, student."""
+
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
         TEACHER = "teacher", "Teacher"
@@ -51,6 +52,7 @@ class User(AbstractUser):
 
 class RegistrationCodeConfig(TimeStampedModel):
     """Global registration-code settings (window + previous window policy)."""
+
     salt = models.CharField(max_length=128, unique=True)
     window_minutes = models.PositiveSmallIntegerField(default=60)
     allow_previous_window = models.BooleanField(default=True)

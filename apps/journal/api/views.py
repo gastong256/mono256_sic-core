@@ -91,7 +91,9 @@ class JournalEntryListCreateView(APIView):
             user=request.user.username,
         )
         entry_with_lines = selectors.get_journal_entry(pk=entry.pk, company=company)
-        return Response(JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED)
+        return Response(
+            JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED
+        )
 
 
 class JournalEntryDetailView(APIView):
@@ -155,4 +157,6 @@ class JournalEntryReverseView(APIView):
             user=request.user.username,
         )
         entry_with_lines = selectors.get_journal_entry(pk=reversal_entry.pk, company=company)
-        return Response(JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED)
+        return Response(
+            JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED
+        )

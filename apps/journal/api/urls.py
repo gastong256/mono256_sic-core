@@ -1,6 +1,10 @@
 from django.urls import path
 
-from apps.journal.api.views import JournalEntryDetailView, JournalEntryListCreateView, JournalEntryReverseView
+from apps.journal.api.views import (
+    JournalEntryDetailView,
+    JournalEntryListCreateView,
+    JournalEntryReverseView,
+)
 
 app_name = "journal"
 

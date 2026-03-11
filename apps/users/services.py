@@ -24,7 +24,13 @@ COOLDOWN_STEPS = (
 _REGISTRATION_CONFIG_CACHE_KEY = "registration:code:config:v1"
 
 
-def update_me(*, user: User, email: str | None = None, first_name: str | None = None, last_name: str | None = None) -> User:
+def update_me(
+    *,
+    user: User,
+    email: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> User:
     if email is not None:
         user.email = email
     if first_name is not None:
@@ -181,7 +187,9 @@ def _incr_counter(*, key: str, timeout: int) -> int:
         return next_value
 
 
-def _consume_window_attempt(*, key: str, limit: int, window_seconds: int, now: datetime) -> int | None:
+def _consume_window_attempt(
+    *, key: str, limit: int, window_seconds: int, now: datetime
+) -> int | None:
     now_ts = int(now.timestamp())
     window_index = now_ts // window_seconds
     counter_key = f"{key}:{window_index}"
@@ -202,7 +210,9 @@ def _registration_keys(*, ip: str, username: str | None) -> dict:
     }
 
 
-def check_registration_limits(*, ip: str, username: str | None, now: datetime | None = None) -> int | None:
+def check_registration_limits(
+    *, ip: str, username: str | None, now: datetime | None = None
+) -> int | None:
     now_dt = now or datetime.now(timezone.utc)
     keys = _registration_keys(ip=ip, username=username)
 

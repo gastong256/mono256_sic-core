@@ -27,9 +27,7 @@ class JournalEntryLineWriteSerializer(serializers.Serializer):
 
     def validate_amount(self, value):
         if value <= 0:
-            raise serializers.ValidationError(
-                "El importe de cada línea debe ser mayor a cero."
-            )
+            raise serializers.ValidationError("El importe de cada línea debe ser mayor a cero.")
         return value
 
 

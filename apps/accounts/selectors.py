@@ -87,7 +87,9 @@ def _hidden_account_ids_for_user(*, user: User | None) -> set[int]:
     return hidden_account_ids_for_student(student=user)
 
 
-def _build_node(account: Account, children: list[dict] | None = None, is_visible: bool | None = None) -> dict:
+def _build_node(
+    account: Account, children: list[dict] | None = None, is_visible: bool | None = None
+) -> dict:
     """Normalized tree node used by chart/visibility endpoints."""
     node = {
         "id": account.pk,
@@ -111,10 +113,7 @@ def get_global_chart(*, user: User | None = None) -> list[dict]:
         return cached
 
     hidden_account_ids = _hidden_account_ids_for_user(user=user)
-    accounts = (
-        Account.objects.filter(level__lte=1)
-        .order_by("tree_id", "lft")
-    )
+    accounts = Account.objects.filter(level__lte=1).order_by("tree_id", "lft")
 
     roots: dict[int, dict] = {}
     level1: dict[int, dict] = {}
@@ -144,13 +143,9 @@ def get_company_chart(*, company: Company, user: User | None = None) -> list[dic
         return cached
 
     hidden_account_ids = _hidden_account_ids_for_user(user=user)
-    accounts = (
-        Account.objects.filter(
-            Q(level__lte=1)
-            | Q(level=2, company_account__company=company)
-        )
-        .order_by("tree_id", "lft")
-    )
+    accounts = Account.objects.filter(
+        Q(level__lte=1) | Q(level=2, company_account__company=company)
+    ).order_by("tree_id", "lft")
 
     roots: dict[int, dict] = {}
     level1: dict[int, dict] = {}
@@ -185,7 +180,9 @@ def get_teacher_visibility_chart(*, teacher: User) -> list[dict]:
 
     overrides = {
         row["account_id"]: row["is_visible"]
-        for row in TeacherAccountVisibility.objects.filter(teacher=teacher).values("account_id", "is_visible")
+        for row in TeacherAccountVisibility.objects.filter(teacher=teacher).values(
+            "account_id", "is_visible"
+        )
     }
 
     accounts = Account.objects.filter(level__lte=1).order_by("tree_id", "lft")

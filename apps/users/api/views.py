@@ -73,7 +73,9 @@ class RegisterView(APIView):
 
         retry_after = services.check_registration_limits(ip=ip, username=username)
         if retry_after is not None:
-            raise Throttled(wait=retry_after, detail="Too many registration attempts. Try again later.")
+            raise Throttled(
+                wait=retry_after, detail="Too many registration attempts. Try again later."
+            )
 
         try:
             user = services.register_student_user(**serializer.validated_data)

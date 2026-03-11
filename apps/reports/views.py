@@ -98,7 +98,8 @@ class LedgerView(APIView):
             "movement in the period chronologically with a running balance. "
             "Optionally filtered to a single account via account_id."
         ),
-        parameters=_DATE_PARAMS + [
+        parameters=_DATE_PARAMS
+        + [
             OpenApiParameter(
                 name="account_id",
                 type=int,
@@ -197,7 +198,9 @@ class JournalBookExcelExportView(APIView):
         )
         filename = f"libro_diario_{company_id}_{date.today().isoformat()}.xlsx"
         artifact = build_journal_book_workbook(report=data)
-        logger.info("report_journal_book_exported", company_id=company.pk, user=request.user.username)
+        logger.info(
+            "report_journal_book_exported", company_id=company.pk, user=request.user.username
+        )
         return workbook_response(artifact=artifact, filename=filename)
 
 
@@ -207,7 +210,8 @@ class LedgerExcelExportView(APIView):
     @extend_schema(
         operation_id="export_ledger_xlsx",
         summary="Export Libro Mayor (XLSX)",
-        parameters=_DATE_PARAMS + [
+        parameters=_DATE_PARAMS
+        + [
             OpenApiParameter(
                 name="account_id",
                 type=int,
@@ -272,5 +276,7 @@ class TrialBalanceExcelExportView(APIView):
         )
         filename = f"balance_comprobacion_{company_id}_{date.today().isoformat()}.xlsx"
         artifact = build_trial_balance_workbook(report=data)
-        logger.info("report_trial_balance_exported", company_id=company.pk, user=request.user.username)
+        logger.info(
+            "report_trial_balance_exported", company_id=company.pk, user=request.user.username
+        )
         return workbook_response(artifact=artifact, filename=filename)

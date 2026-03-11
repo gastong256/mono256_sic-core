@@ -45,35 +45,41 @@ def get_journal_book(
 
         for line in entry.lines.all():
             if line.type == JournalEntryLine.LineType.DEBIT:
-                lines_data.append({
-                    "account_code": line.account.full_code,
-                    "account_name": line.account.name,
-                    "debit": f"{line.amount:.2f}",
-                    "credit": None,
-                })
+                lines_data.append(
+                    {
+                        "account_code": line.account.full_code,
+                        "account_name": line.account.name,
+                        "debit": f"{line.amount:.2f}",
+                        "credit": None,
+                    }
+                )
                 entry_debit += line.amount
             else:
-                lines_data.append({
-                    "account_code": line.account.full_code,
-                    "account_name": line.account.name,
-                    "debit": None,
-                    "credit": f"{line.amount:.2f}",
-                })
+                lines_data.append(
+                    {
+                        "account_code": line.account.full_code,
+                        "account_name": line.account.name,
+                        "debit": None,
+                        "credit": f"{line.amount:.2f}",
+                    }
+                )
                 entry_credit += line.amount
 
         grand_debit += entry_debit
         grand_credit += entry_credit
 
-        entries_data.append({
-            "entry_number": entry.entry_number,
-            "date": str(entry.date),
-            "description": entry.description,
-            "source_type": entry.source_type,
-            "source_ref": entry.source_ref,
-            "lines": lines_data,
-            "total_debit": f"{entry_debit:.2f}",
-            "total_credit": f"{entry_credit:.2f}",
-        })
+        entries_data.append(
+            {
+                "entry_number": entry.entry_number,
+                "date": str(entry.date),
+                "description": entry.description,
+                "source_type": entry.source_type,
+                "source_ref": entry.source_ref,
+                "lines": lines_data,
+                "total_debit": f"{entry_debit:.2f}",
+                "total_credit": f"{entry_credit:.2f}",
+            }
+        )
 
     return {
         "company": company.name,

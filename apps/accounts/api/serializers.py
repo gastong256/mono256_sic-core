@@ -47,9 +47,7 @@ class AccountUpdateSerializer(serializers.Serializer):
 
     def validate(self, attrs: dict) -> dict:
         if not attrs.get("name") and not attrs.get("code"):
-            raise serializers.ValidationError(
-                "At least one of 'name' or 'code' must be provided."
-            )
+            raise serializers.ValidationError("At least one of 'name' or 'code' must be provided.")
         return attrs
 
 

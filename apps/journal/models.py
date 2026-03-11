@@ -8,6 +8,7 @@ from apps.companies.models import Company
 
 class JournalEntry(TimeStampedModel):
     """Immutable accounting entry; once posted it cannot be edited or deleted."""
+
     class SourceType(models.TextChoices):
         MANUAL = "MANUAL", "Manual"
         INVOICE = "INVOICE", "Factura"
@@ -90,6 +91,7 @@ class JournalEntry(TimeStampedModel):
 
 class JournalEntryLine(models.Model):
     """Single debit/credit movement line with positive amount."""
+
     class LineType(models.TextChoices):
         DEBIT = "DEBIT", "Deudora"
         CREDIT = "CREDIT", "Acreedora"

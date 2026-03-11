@@ -70,6 +70,12 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
 
 def _request_handler(request: Request, exc: Exception) -> Response:
     return Response(
-        {"error": {"code": "internal_error", "message": "An unexpected error occurred.", "detail": None}},
+        {
+            "error": {
+                "code": "internal_error",
+                "message": "An unexpected error occurred.",
+                "detail": None,
+            }
+        },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )

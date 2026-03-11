@@ -16,9 +16,11 @@ def list_courses(*, user: User) -> QuerySet[Course]:
 
 def get_course(*, pk: int, user: User) -> Course:
     try:
-        course = Course.objects.select_related("teacher").annotate(
-            student_count=Count("enrollments")
-        ).get(pk=pk)
+        course = (
+            Course.objects.select_related("teacher")
+            .annotate(student_count=Count("enrollments"))
+            .get(pk=pk)
+        )
     except Course.DoesNotExist:
         raise NotFound("Course not found.")
 

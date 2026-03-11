@@ -6,13 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('companies', '0003_post_hordak_0055_recreate_views'),
+        ("companies", "0003_post_hordak_0055_recreate_views"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='company',
-            name='books_closed_until',
-            field=models.DateField(blank=True, help_text='Entries on or before this date are locked.', null=True, verbose_name='books closed until'),
+            model_name="company",
+            name="books_closed_until",
+            field=models.DateField(
+                blank=True,
+                help_text="Entries on or before this date are locked.",
+                null=True,
+                verbose_name="books closed until",
+            ),
         ),
     ]

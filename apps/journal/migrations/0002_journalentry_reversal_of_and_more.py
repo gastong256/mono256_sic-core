@@ -8,24 +8,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('companies', '0004_company_books_closed_until'),
-        ('hordak', '0055_alter_leg_credit_alter_leg_currency_alter_leg_debit'),
-        ('journal', '0001_initial'),
+        ("companies", "0004_company_books_closed_until"),
+        ("hordak", "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"),
+        ("journal", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='journalentry',
-            name='reversal_of',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='reversed_by', to='journal.journalentry', verbose_name='reversión de'),
+            model_name="journalentry",
+            name="reversal_of",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="reversed_by",
+                to="journal.journalentry",
+                verbose_name="reversión de",
+            ),
         ),
         migrations.AddIndex(
-            model_name='journalentry',
-            index=models.Index(fields=['company', 'date'], name='journal_jou_company_ff69d3_idx'),
+            model_name="journalentry",
+            index=models.Index(fields=["company", "date"], name="journal_jou_company_ff69d3_idx"),
         ),
         migrations.AddIndex(
-            model_name='journalentryline',
-            index=models.Index(fields=['journal_entry', 'account', 'type'], name='journal_jou_journal_04542b_idx'),
+            model_name="journalentryline",
+            index=models.Index(
+                fields=["journal_entry", "account", "type"], name="journal_jou_journal_04542b_idx"
+            ),
         ),
     ]

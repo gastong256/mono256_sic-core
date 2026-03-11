@@ -76,14 +76,18 @@ class CourseListCreateView(APIView):
             name=serializer.validated_data["name"],
             code=serializer.validated_data.get("code"),
         )
-        logger.info("course_created", course_id=course.pk, teacher_id=teacher.pk, actor_id=request.user.pk)
+        logger.info(
+            "course_created", course_id=course.pk, teacher_id=teacher.pk, actor_id=request.user.pk
+        )
         return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
 
 
 class CourseDetailView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
-    @extend_schema(operation_id="courses_retrieve", tags=["courses"], responses={200: CourseSerializer})
+    @extend_schema(
+        operation_id="courses_retrieve", tags=["courses"], responses={200: CourseSerializer}
+    )
     def get(self, request: Request, course_id: int) -> Response:
         course = selectors.get_course(pk=course_id, user=request.user)
         return Response(CourseSerializer(course).data)
@@ -274,7 +278,9 @@ class TeacherCourseJournalEntriesView(APIView):
         from rest_framework.exceptions import ValidationError
 
         course = selectors.get_course(pk=course_id, user=request.user)
-        enrollments = CourseEnrollment.objects.filter(course=course).values_list("student_id", flat=True)
+        enrollments = CourseEnrollment.objects.filter(course=course).values_list(
+            "student_id", flat=True
+        )
 
         qs = (
             JournalEntry.objects.filter(company__owner_id__in=enrollments)

@@ -11,7 +11,9 @@ def create_company(*, name: str, tax_id: str = "", owner) -> Company:
     return company
 
 
-def update_company(*, company: Company, name: str | None = None, tax_id: str | None = None) -> Company:
+def update_company(
+    *, company: Company, name: str | None = None, tax_id: str | None = None
+) -> Company:
     if name is not None:
         company.name = name
     if tax_id is not None:

@@ -15,9 +15,7 @@ def list_companies(*, user) -> QuerySet[Company]:
         from apps.courses.selectors import student_ids_for_teacher
 
         enrolled_ids = student_ids_for_teacher(teacher=user)
-        return base_qs.filter(
-            Q(owner=user) | Q(owner_id__in=enrolled_ids)
-        )
+        return base_qs.filter(Q(owner=user) | Q(owner_id__in=enrolled_ids))
 
     return base_qs.filter(owner=user)
 

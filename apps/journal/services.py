@@ -31,15 +31,10 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
     - only company movement accounts (MPTT level=2 leaf)
     """
     if not lines:
-        raise ValidationError(
-            "El asiento debe tener al menos una línea deudora y una acreedora."
-        )
+        raise ValidationError("El asiento debe tener al menos una línea deudora y una acreedora.")
 
     account_ids = {line["account_id"] for line in lines}
-    accounts = {
-        account.pk: account
-        for account in Account.objects.filter(pk__in=account_ids)
-    }
+    accounts = {account.pk: account for account in Account.objects.filter(pk__in=account_ids)}
     missing = account_ids - set(accounts.keys())
     if missing:
         missing_id = min(missing)
@@ -63,9 +58,7 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
         account_id: int = line["account_id"]
 
         if amount <= 0:
-            raise ValidationError(
-                "El importe de cada línea debe ser mayor a cero."
-            )
+            raise ValidationError("El importe de cada línea debe ser mayor a cero.")
 
         account = accounts[account_id]
 
@@ -80,9 +73,7 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
             )
 
         if account_id not in company_account_ids:
-            raise ValidationError(
-                f"La cuenta {account.full_code} no pertenece a esta empresa."
-            )
+            raise ValidationError(f"La cuenta {account.full_code} no pertenece a esta empresa.")
 
         if line_type == JournalEntryLine.LineType.DEBIT:
             debit_total += amount
@@ -92,14 +83,10 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
             has_credit = True
 
     if not has_debit or not has_credit:
-        raise ValidationError(
-            "El asiento debe tener al menos una línea deudora y una acreedora."
-        )
+        raise ValidationError("El asiento debe tener al menos una línea deudora y una acreedora.")
 
     if debit_total != credit_total:
-        raise ValidationError(
-            "El total de débitos debe ser igual al total de créditos."
-        )
+        raise ValidationError("El total de débitos debe ser igual al total de créditos.")
     return accounts
 
 
@@ -163,15 +150,17 @@ def create_journal_entry(
     except IntegrityError:
         raise ConflictError("Another entry was created concurrently. Please retry.")
 
-    JournalEntryLine.objects.bulk_create([
-        JournalEntryLine(
-            journal_entry=entry,
-            account_id=line["account_id"],
-            type=line["type"],
-            amount=line["amount"],
-        )
-        for line in lines
-    ])
+    JournalEntryLine.objects.bulk_create(
+        [
+            JournalEntryLine(
+                journal_entry=entry,
+                account_id=line["account_id"],
+                type=line["type"],
+                amount=line["amount"],
+            )
+            for line in lines
+        ]
+    )
 
     return entry
 
@@ -195,9 +184,7 @@ def reverse_journal_entry(
     reversal_date = date or datetime.date.today()
     _assert_books_open(company=company, date=reversal_date)
 
-    original_lines = list(
-        original_entry.lines.select_related("account").all()
-    )
+    original_lines = list(original_entry.lines.select_related("account").all())
     if not original_lines:
         raise ValidationError("Cannot reverse an entry with no lines.")
 
@@ -209,11 +196,13 @@ def reverse_journal_entry(
             if line.type == JournalEntryLine.LineType.DEBIT
             else JournalEntryLine.LineType.DEBIT
         )
-        reversed_lines.append({
-            "account_id": line.account_id,
-            "type": reversed_type,
-            "amount": line.amount,
-        })
+        reversed_lines.append(
+            {
+                "account_id": line.account_id,
+                "type": reversed_type,
+                "amount": line.amount,
+            }
+        )
 
     reversal_description = (
         description.strip()
@@ -253,14 +242,16 @@ def reverse_journal_entry(
     except IntegrityError:
         raise ConflictError("Another entry was created concurrently. Please retry.")
 
-    JournalEntryLine.objects.bulk_create([
-        JournalEntryLine(
-            journal_entry=reversal_entry,
-            account_id=line["account_id"],
-            type=line["type"],
-            amount=line["amount"],
-        )
-        for line in reversed_lines
-    ])
+    JournalEntryLine.objects.bulk_create(
+        [
+            JournalEntryLine(
+                journal_entry=reversal_entry,
+                account_id=line["account_id"],
+                type=line["type"],
+                amount=line["amount"],
+            )
+            for line in reversed_lines
+        ]
+    )
 
     return reversal_entry
