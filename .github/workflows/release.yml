@@ -24,7 +24,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT }}
 
       - name: Checkout tested commit on main branch
         run: git checkout -B main ${{ github.event.workflow_run.head_sha }}
@@ -43,7 +43,7 @@ jobs:
 
       - name: Semantic release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           uv run semantic-release version
           uv run semantic-release publish
