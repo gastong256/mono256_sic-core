@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.1 (2026-03-11)
+
+### Bug Fixes
+
+- Include runtime scripts in build context for Render deploy
+  ([`08cb856`](https://github.com/gastong256/mono256_sic-core/commit/08cb856ed0f1389e83d7b5904426cd21e8de36fa))
+
+
 ## v0.1.0 (2026-03-11)
 
 ### Bug Fixes
