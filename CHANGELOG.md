@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.5 (2026-03-11)
+
+### Bug Fixes
+
+- Create staticfiles directory in runtime image
+  ([`8b60397`](https://github.com/gastong256/mono256_sic-core/commit/8b6039731f9e351268419d6cc499416b9f716ac8))
+
+
 ## v0.1.4 (2026-03-11)
 
 ### Bug Fixes
