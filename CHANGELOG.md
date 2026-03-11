@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v0.1.2 (2026-03-11)
+
+### Bug Fixes
+
+- Align registration throttle threshold and silence staticfiles warnings
+  ([`47aaa23`](https://github.com/gastong256/mono256_sic-core/commit/47aaa23a9c8f350557c8047cc156733e5f085ef6))
+
+- Apply black format
+  ([`f10bc0b`](https://github.com/gastong256/mono256_sic-core/commit/f10bc0b5237111adee221501943a307fd323ea4e))
+
+- Make hordak 0055 dependency resolution resilient across package variants
+  ([`a6ad899`](https://github.com/gastong256/mono256_sic-core/commit/a6ad899b3b24e735d536084822b7b2797b5068ce))
+
+- Run full CI on main and gate release on successful CI
+  ([`bedcd78`](https://github.com/gastong256/mono256_sic-core/commit/bedcd785eddad354612161b53e77b87c4e43d062))
+
+- Run semantic-release from main branch instead of detached HEAD
+  ([`b546335`](https://github.com/gastong256/mono256_sic-core/commit/b546335d003e7929247cd2fc9be7a00d6dac4ffb))
+
+- Use frozen lockfile to prevent migration dependency drift
+  ([`d6048e1`](https://github.com/gastong256/mono256_sic-core/commit/d6048e110957d6fbd19429f8e8d136b6e5219de2))
+
+
 ## v0.1.1 (2026-03-11)
 
 ### Bug Fixes
