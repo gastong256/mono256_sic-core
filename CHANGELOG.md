@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.4 (2026-03-11)
+
+### Bug Fixes
+
+- Run collectstatic during predeploy migrations
+  ([`f7b1b2f`](https://github.com/gastong256/mono256_sic-core/commit/f7b1b2fdec9783c29cd2ca49dc6957b8bd7d5c7b))
+
+
 ## v0.1.3 (2026-03-11)
 
 ### Bug Fixes
