@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.10 (2026-03-11)
+
+### Bug Fixes
+
+- Add configurable migrate verbosity for free-tier startup
+  ([`c26435f`](https://github.com/gastong256/mono256_sic-core/commit/c26435f01f7c175ff09861c1992c1732059bad46))
+
+
 ## v0.1.9 (2026-03-11)
 
 ### Bug Fixes
