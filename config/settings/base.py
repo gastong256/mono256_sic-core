@@ -23,6 +23,16 @@ env = environ.Env(
     DB_CONN_MAX_AGE=(int, 60),
     DB_CONN_HEALTH_CHECKS=(bool, True),
     DB_CONNECT_TIMEOUT=(int, 5),
+    ACCOUNT_CHART_CACHE_TIMEOUT=(int, 300),
+    ACCOUNT_VISIBILITY_CACHE_TIMEOUT=(int, 300),
+    REGISTRATION_CONFIG_CACHE_TIMEOUT=(int, 300),
+    TENANT_ALLOWED_IDS=(list, []),
+    ENABLE_ADMIN_SITE=(bool, True),
+    ENABLE_API_DOCS=(bool, True),
+    ENABLE_EXAMPLE_API=(bool, True),
+    AUTH_REGISTER_THROTTLE_RATE=(str, "6/min"),
+    AUTH_TOKEN_OBTAIN_THROTTLE_RATE=(str, "12/min"),
+    AUTH_TOKEN_REFRESH_THROTTLE_RATE=(str, "30/min"),
 )
 
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
@@ -169,6 +179,14 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_register": env("AUTH_REGISTER_THROTTLE_RATE"),
+        "auth_token_obtain": env("AUTH_TOKEN_OBTAIN_THROTTLE_RATE"),
+        "auth_token_refresh": env("AUTH_TOKEN_REFRESH_THROTTLE_RATE"),
+    },
 }
 
 SIMPLE_JWT = {
@@ -190,6 +208,13 @@ JSON_LOGS = env.bool("JSON_LOGS", default=True)
 REQUEST_LOG_ENABLED = env("REQUEST_LOG_ENABLED")
 SLOW_REQUEST_THRESHOLD_MS = env("SLOW_REQUEST_THRESHOLD_MS")
 REQUEST_LOG_SKIP_PATHS = env("REQUEST_LOG_SKIP_PATHS")
+ACCOUNT_CHART_CACHE_TIMEOUT = env("ACCOUNT_CHART_CACHE_TIMEOUT")
+ACCOUNT_VISIBILITY_CACHE_TIMEOUT = env("ACCOUNT_VISIBILITY_CACHE_TIMEOUT")
+REGISTRATION_CONFIG_CACHE_TIMEOUT = env("REGISTRATION_CONFIG_CACHE_TIMEOUT")
+TENANT_ALLOWED_IDS = env("TENANT_ALLOWED_IDS")
+ENABLE_ADMIN_SITE = env("ENABLE_ADMIN_SITE")
+ENABLE_API_DOCS = env("ENABLE_API_DOCS")
+ENABLE_EXAMPLE_API = env("ENABLE_EXAMPLE_API")
 configure_logging(log_level=LOG_LEVEL, json_logs=JSON_LOGS)
 
 setup_otel()

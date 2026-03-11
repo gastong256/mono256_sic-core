@@ -94,6 +94,9 @@ def create_account(
         raise ValidationError({"code": f"Account code '{code}' already exists."})
 
     CompanyAccount.objects.create(account=account, company=company)
+    from apps.accounts.selectors import bump_company_chart_cache_version
+
+    bump_company_chart_cache_version(company_id=company.id)
 
     return account
 
@@ -140,6 +143,10 @@ def update_account(
         conflict_code = code or account.full_code or account.code
         raise ValidationError({"code": f"Account code '{conflict_code}' already exists."})
     account.refresh_from_db()
+
+    from apps.accounts.selectors import bump_company_chart_cache_version
+
+    bump_company_chart_cache_version(company_id=company.id)
     return account
 
 
@@ -161,3 +168,6 @@ def delete_account(*, account: Account, company: Company) -> None:
 
     company_account.delete()
     account.delete()
+    from apps.accounts.selectors import bump_company_chart_cache_version
+
+    bump_company_chart_cache_version(company_id=company.id)

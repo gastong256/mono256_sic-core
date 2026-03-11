@@ -64,7 +64,14 @@ class JournalEntry(TimeStampedModel):
         ordering = ["company", "entry_number"]
         unique_together = [("company", "entry_number")]
         indexes = [
-            models.Index(fields=["company", "date"]),
+            models.Index(
+                fields=["company", "date", "entry_number"],
+                name="journal_entry_cmp_dt_no_idx",
+            ),
+            models.Index(
+                fields=["date", "entry_number"],
+                name="journal_entry_dt_no_idx",
+            ),
         ]
         verbose_name = "Asiento contable"
         verbose_name_plural = "Asientos contables"
@@ -111,7 +118,14 @@ class JournalEntryLine(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["journal_entry", "account", "type"]),
+            models.Index(
+                fields=["journal_entry", "account", "type"],
+                name="journal_line_je_ac_tp_idx",
+            ),
+            models.Index(
+                fields=["account", "journal_entry"],
+                name="journal_line_ac_je_idx",
+            ),
         ]
         verbose_name = "Línea de asiento"
         verbose_name_plural = "Líneas de asiento"

@@ -1,7 +1,7 @@
 import pytest
 
 try:
-    import openpyxl  # noqa: F401
+    import openpyxl
 
     OPENPYXL_AVAILABLE = True
 except ModuleNotFoundError:
@@ -12,6 +12,13 @@ from apps.reports.exports import (
     build_ledger_workbook,
     build_trial_balance_workbook,
 )
+
+
+def _active_sheet(artifact):
+    artifact.workbook.close()
+    artifact.stream.seek(0)
+    loaded = openpyxl.load_workbook(artifact.stream)
+    return loaded.active
 
 
 @pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl is not installed")
@@ -48,8 +55,8 @@ class TestReportExcelExports:
             "totals": {"total_debit": "100.00", "total_credit": "100.00"},
         }
 
-        wb = build_journal_book_workbook(report=report)
-        ws = wb.active
+        artifact = build_journal_book_workbook(report=report)
+        ws = _active_sheet(artifact)
 
         assert ws.title == "Libro Diario"
         assert ws["A1"].value == "Libro Diario"
@@ -74,8 +81,8 @@ class TestReportExcelExports:
             ],
         }
 
-        wb = build_ledger_workbook(report=report)
-        ws = wb.active
+        artifact = build_ledger_workbook(report=report)
+        ws = _active_sheet(artifact)
 
         assert ws.title == "Libro Mayor"
         assert ws["A1"].value == "Libro Mayor"
@@ -116,8 +123,8 @@ class TestReportExcelExports:
             },
         }
 
-        wb = build_trial_balance_workbook(report=report)
-        ws = wb.active
+        artifact = build_trial_balance_workbook(report=report)
+        ws = _active_sheet(artifact)
 
         assert ws.title == "Balance"
         assert ws["A1"].value == "Balance de Comprobacion"

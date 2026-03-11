@@ -15,12 +15,12 @@ dependencies = [
     "django-filter>=24",
     "psycopg[binary]>=3.1",
     "gunicorn>=22",
+    "xlsxwriter>=3.2",
     "structlog>=24",
     "whitenoise>=6",
     "django-hordak>=2.0.0",
     "djangorestframework-simplejwt>=5.5.1",
     "django-cors-headers>=4.9.0",
-    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +41,7 @@ dev = [
     "black>=24",
     "pyright>=1.1",
     "pre-commit>=3",
+    "openpyxl>=3.1",
 ]
 
 [build-system]

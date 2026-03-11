@@ -6,11 +6,11 @@ FROM python:${PYTHON_VERSION}-slim AS builder
 
 WORKDIR /build
 
-RUN pip install --no-cache-dir uv==0.4.*
+RUN pip install --no-cache-dir uv==0.10.*
 
-COPY pyproject.toml .
-# Sync only production deps (no dev extras)
-RUN uv sync --no-dev --no-install-project
+COPY pyproject.toml uv.lock ./
+# Sync production deps from lockfile without building/installing the local package.
+RUN uv sync --frozen --no-dev --no-install-project
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS runtime

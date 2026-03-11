@@ -29,6 +29,8 @@ class CompanySerializer(serializers.ModelSerializer):
         ]
 
     def get_account_count(self, obj: Company) -> int:
+        if hasattr(obj, "account_count"):
+            return int(obj.account_count)
         return obj.accounts.count()
 
 

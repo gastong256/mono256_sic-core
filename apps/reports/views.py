@@ -42,12 +42,12 @@ _DATE_PARAMS = [
 class ExcelExportUnavailable(APIException):
     status_code = 503
     default_code = "excel_export_unavailable"
-    default_detail = "Excel export dependency is not installed. Install openpyxl."
+    default_detail = "Excel export dependency is not installed. Install xlsxwriter."
 
 
 def _ensure_excel_dependency() -> None:
     try:
-        import openpyxl  # noqa: F401
+        import xlsxwriter  # noqa: F401
     except ModuleNotFoundError as exc:
         raise ExcelExportUnavailable() from exc
 
@@ -73,7 +73,6 @@ class JournalBookView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
 
         params = ReportParamsSerializer(data=request.query_params)
@@ -118,7 +117,6 @@ class LedgerView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
 
         params = LedgerParamsSerializer(data=request.query_params)
@@ -156,7 +154,6 @@ class TrialBalanceView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
 
         params = ReportParamsSerializer(data=request.query_params)
@@ -188,6 +185,7 @@ class JournalBookExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
+        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -198,9 +196,9 @@ class JournalBookExcelExportView(APIView):
             date_to=params.validated_data.get("date_to"),
         )
         filename = f"libro_diario_{company_id}_{date.today().isoformat()}.xlsx"
-        workbook = build_journal_book_workbook(report=data)
+        artifact = build_journal_book_workbook(report=data)
         logger.info("report_journal_book_exported", company_id=company.pk, user=request.user.username)
-        return workbook_response(workbook=workbook, filename=filename)
+        return workbook_response(artifact=artifact, filename=filename)
 
 
 class LedgerExcelExportView(APIView):
@@ -228,6 +226,7 @@ class LedgerExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
+        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         params = LedgerParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -239,9 +238,9 @@ class LedgerExcelExportView(APIView):
             account_id=params.validated_data.get("account_id"),
         )
         filename = f"libro_mayor_{company_id}_{date.today().isoformat()}.xlsx"
-        workbook = build_ledger_workbook(report=data)
+        artifact = build_ledger_workbook(report=data)
         logger.info("report_ledger_exported", company_id=company.pk, user=request.user.username)
-        return workbook_response(workbook=workbook, filename=filename)
+        return workbook_response(artifact=artifact, filename=filename)
 
 
 class TrialBalanceExcelExportView(APIView):
@@ -261,6 +260,7 @@ class TrialBalanceExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
+        _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -271,6 +271,6 @@ class TrialBalanceExcelExportView(APIView):
             date_to=params.validated_data.get("date_to"),
         )
         filename = f"balance_comprobacion_{company_id}_{date.today().isoformat()}.xlsx"
-        workbook = build_trial_balance_workbook(report=data)
+        artifact = build_trial_balance_workbook(report=data)
         logger.info("report_trial_balance_exported", company_id=company.pk, user=request.user.username)
-        return workbook_response(workbook=workbook, filename=filename)
+        return workbook_response(artifact=artifact, filename=filename)

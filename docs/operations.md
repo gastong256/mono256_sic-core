@@ -27,6 +27,10 @@ Recommended:
 - `DB_CONN_MAX_AGE=60`
 - `DB_CONN_HEALTH_CHECKS=true`
 - `DB_CONNECT_TIMEOUT=5`
+- `ACCOUNT_CHART_CACHE_TIMEOUT=300`
+- `ACCOUNT_VISIBILITY_CACHE_TIMEOUT=300`
+- `REGISTRATION_CONFIG_CACHE_TIMEOUT=300`
+- `GUNICORN_ACCESS_LOG_PROD=false` (avoid duplicate request logging)
 
 ## 3. Deployment Procedure
 
@@ -103,14 +107,32 @@ Monitor at least:
 
 Use `request_id` in logs to trace incidents end-to-end.
 
-## 8. Security Operations
+## 8. Performance Validation
+
+Before releasing high-impact changes, run:
+
+1. Load smoke profile against representative endpoints:
+   ```bash
+   ./scripts/load_profile.sh "http://localhost:8000/api/v1/companies/1/journal/?page=1" 200 20
+   ```
+2. Query-plan inspection for reporting/list endpoints:
+   ```bash
+   ./scripts/db_explain.sh 1
+   ```
+3. Capture and record at least:
+   - p95 latency
+   - success rate
+   - queries/request (from explain + app logs)
+   - worker memory (RSS) under sustained load
+
+## 9. Security Operations
 
 - Rotate `DJANGO_SECRET_KEY` and DB credentials under controlled maintenance windows.
 - Keep `DEBUG=false` in production.
 - Enforce HTTPS at the edge and keep secure cookie settings.
 - Restrict admin users (`role=admin`, `is_staff=true`) to trusted operators only.
 
-## 9. Incident Response Quick Guide
+## 10. Incident Response Quick Guide
 
 1. Check service status:
    - `GET /healthz`, `GET /readyz`.
@@ -126,4 +148,3 @@ Use `request_id` in logs to trace incidents end-to-end.
    - verify readiness and critical user flows.
 6. Postmortem:
    - document root cause and action items.
-

@@ -25,5 +25,5 @@ This is intentionally lightweight. No row-level security or schema-per-tenant is
 
 - All log records include `tenant_id` at zero overhead.
 - Single-tenant deployments see `tenant_id = "public"` everywhere and can ignore the mechanism.
-- The `X-Tenant-ID` header must be treated as **untrusted user input** and validated against an allowlist before use in any security-sensitive decision. The current implementation passes it through raw; production multitenancy must add validation.
+- The `X-Tenant-ID` header is treated as **untrusted user input**. Middleware normalizes to lowercase, validates allowed characters, and can enforce an allowlist via `TENANT_ALLOWED_IDS`; invalid values fall back to `"public"`.
 - API gateways or service meshes should be responsible for injecting a verified `X-Tenant-ID` header.

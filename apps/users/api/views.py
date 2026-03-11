@@ -1,12 +1,12 @@
 import structlog
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.exceptions import NotFound, Throttled
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.pagination import paginate_queryset
 from apps.common.permissions import IsAdminRole, IsTeacherOrAdminRole
 from apps.users import services
 from apps.users.api.serializers import (
@@ -51,6 +51,7 @@ class MeView(APIView):
 
 class RegisterView(APIView):
     permission_classes = []
+    throttle_scope = "auth_register"
 
     @extend_schema(
         operation_id="register_student",
@@ -164,9 +165,7 @@ class UserListView(APIView):
         if search:
             qs = qs.filter(username__icontains=search)
 
-        paginator = PageNumberPagination()
-        paginator.page_size = 25
-        page = paginator.paginate_queryset(qs, request)
+        paginator, page = paginate_queryset(request=request, queryset=qs)
         return paginator.get_paginated_response(UserSerializer(page, many=True).data)
 
 

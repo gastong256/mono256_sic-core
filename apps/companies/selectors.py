@@ -1,4 +1,4 @@
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.companies.models import Company
@@ -6,18 +6,20 @@ from apps.users.models import User
 
 
 def list_companies(*, user) -> QuerySet[Company]:
+    base_qs = Company.objects.select_related("owner").annotate(account_count=Count("accounts"))
+
     if user.role == User.Role.ADMIN:
-        return Company.objects.select_related("owner").all()
+        return base_qs.all()
 
     if user.role == User.Role.TEACHER:
         from apps.courses.selectors import student_ids_for_teacher
 
         enrolled_ids = student_ids_for_teacher(teacher=user)
-        return Company.objects.select_related("owner").filter(
+        return base_qs.filter(
             Q(owner=user) | Q(owner_id__in=enrolled_ids)
         )
 
-    return Company.objects.select_related("owner").filter(owner=user)
+    return base_qs.filter(owner=user)
 
 
 def get_company(*, pk: int, user) -> Company:

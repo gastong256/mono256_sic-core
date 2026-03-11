@@ -21,6 +21,7 @@ COOLDOWN_STEPS = (
     (5, 5 * 60),
     (8, 15 * 60),
 )
+_REGISTRATION_CONFIG_CACHE_KEY = "registration:code:config:v1"
 
 
 def update_me(*, user: User, email: str | None = None, first_name: str | None = None, last_name: str | None = None) -> User:
@@ -67,7 +68,27 @@ def _registration_config() -> RegistrationCodeConfig:
     )
     config.full_clean()
     config.save()
+    cache.delete(_REGISTRATION_CONFIG_CACHE_KEY)
     return config
+
+
+def _registration_config_cache_timeout() -> int:
+    return int(getattr(settings, "REGISTRATION_CONFIG_CACHE_TIMEOUT", 300))
+
+
+def _registration_config_values() -> dict[str, object]:
+    cached = cache.get(_REGISTRATION_CONFIG_CACHE_KEY)
+    if isinstance(cached, dict):
+        return cached
+
+    config = _registration_config()
+    values = {
+        "salt": config.salt,
+        "window_minutes": config.window_minutes,
+        "allow_previous_window": config.allow_previous_window,
+    }
+    cache.set(_REGISTRATION_CONFIG_CACHE_KEY, values, timeout=_registration_config_cache_timeout())
+    return values
 
 
 def _window_index(*, ts_epoch: int, window_minutes: int) -> int:
@@ -88,19 +109,20 @@ def _build_registration_code(*, salt: str, window_index: int) -> str:
 
 
 def get_current_registration_code_info(*, at_epoch: int | None = None) -> dict:
-    config = _registration_config()
+    config = _registration_config_values()
     now_epoch = at_epoch if at_epoch is not None else _current_epoch_seconds()
-    index = _window_index(ts_epoch=now_epoch, window_minutes=config.window_minutes)
-    code = _build_registration_code(salt=config.salt, window_index=index)
+    window_minutes = int(config["window_minutes"])
+    index = _window_index(ts_epoch=now_epoch, window_minutes=window_minutes)
+    code = _build_registration_code(salt=str(config["salt"]), window_index=index)
 
-    window_seconds = config.window_minutes * 60
+    window_seconds = window_minutes * 60
     starts_at = index * window_seconds
     expires_at = starts_at + window_seconds
 
     return {
         "code": code,
-        "window_minutes": config.window_minutes,
-        "allow_previous_window": config.allow_previous_window,
+        "window_minutes": window_minutes,
+        "allow_previous_window": bool(config["allow_previous_window"]),
         "valid_from": datetime.fromtimestamp(starts_at, tz=timezone.utc),
         "valid_until": datetime.fromtimestamp(expires_at, tz=timezone.utc),
     }
@@ -111,6 +133,7 @@ def rotate_registration_code() -> dict:
     config.salt = secrets.token_urlsafe(32)
     config.full_clean()
     config.save(update_fields=["salt", "updated_at"])
+    cache.delete(_REGISTRATION_CONFIG_CACHE_KEY)
     return get_current_registration_code_info()
 
 
@@ -118,33 +141,54 @@ def validate_registration_code(*, submitted_code: str, at_epoch: int | None = No
     if not submitted_code:
         return False
 
-    config = _registration_config()
+    config = _registration_config_values()
     now_epoch = at_epoch if at_epoch is not None else _current_epoch_seconds()
-    current_index = _window_index(ts_epoch=now_epoch, window_minutes=config.window_minutes)
+    window_minutes = int(config["window_minutes"])
+    current_index = _window_index(ts_epoch=now_epoch, window_minutes=window_minutes)
 
     normalized = _normalize_registration_code(submitted_code)
     valid_codes = {
-        _normalize_registration_code(_build_registration_code(salt=config.salt, window_index=current_index))
+        _normalize_registration_code(
+            _build_registration_code(salt=str(config["salt"]), window_index=current_index)
+        )
     }
-    if config.allow_previous_window:
+    if bool(config["allow_previous_window"]):
         valid_codes.add(
             _normalize_registration_code(
-                _build_registration_code(salt=config.salt, window_index=current_index - 1)
+                _build_registration_code(salt=str(config["salt"]), window_index=current_index - 1)
             )
         )
     return normalized in valid_codes
 
 
+def _incr_counter(*, key: str, timeout: int) -> int:
+    if cache.add(key, 0, timeout=timeout):
+        try:
+            return int(cache.incr(key))
+        except ValueError:
+            cache.set(key, 1, timeout=timeout)
+            return 1
+
+    try:
+        return int(cache.incr(key))
+    except ValueError:
+        current = cache.get(key)
+        if isinstance(current, int):
+            next_value = current + 1
+        else:
+            next_value = 1
+        cache.set(key, next_value, timeout=timeout)
+        return next_value
+
+
 def _consume_window_attempt(*, key: str, limit: int, window_seconds: int, now: datetime) -> int | None:
     now_ts = int(now.timestamp())
-    attempts: list[int] = cache.get(key, [])
-    cutoff = now_ts - window_seconds
-    attempts = [ts for ts in attempts if ts > cutoff]
-    if len(attempts) >= limit:
-        retry_after = window_seconds - (now_ts - min(attempts))
+    window_index = now_ts // window_seconds
+    counter_key = f"{key}:{window_index}"
+    attempts = _incr_counter(key=counter_key, timeout=window_seconds + 1)
+    if attempts > limit:
+        retry_after = window_seconds - (now_ts % window_seconds)
         return max(retry_after, 1)
-    attempts.append(now_ts)
-    cache.set(key, attempts, timeout=window_seconds)
     return None
 
 
@@ -193,8 +237,7 @@ def check_registration_limits(*, ip: str, username: str | None, now: datetime | 
 def register_failure(*, ip: str, username: str | None, now: datetime | None = None) -> int | None:
     now_dt = now or datetime.now(timezone.utc)
     keys = _registration_keys(ip=ip, username=username)
-    fail_count = cache.get(keys["fail_count"], 0) + 1
-    cache.set(keys["fail_count"], fail_count, timeout=FAILURE_COUNTER_TTL)
+    fail_count = _incr_counter(key=keys["fail_count"], timeout=FAILURE_COUNTER_TTL)
 
     cooldown = None
     for threshold, cooldown_seconds in COOLDOWN_STEPS:

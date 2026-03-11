@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init run test lint format typecheck migrate makemigrations shell docker-build
+.PHONY: help init run test lint format typecheck migrate makemigrations shell docker-build perf-load perf-explain
 
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
@@ -91,7 +91,15 @@ check-prod-settings: ## Run Django deployment checks with production settings
 	DJANGO_SECRET_KEY=ci-prod-secret-key-with-50-plus-characters-1234567890 \
 	DJANGO_ALLOWED_HOSTS=api.example.com \
 	DATABASE_URL=sqlite:///db.sqlite3 \
+	REDIS_URL=redis://localhost:6379/0 \
 	uv run python manage.py check --deploy --fail-level WARNING
 
 pre-commit: ## Run pre-commit hooks against all files
 	uv run pre-commit run --all-files
+
+perf-load: ## Run lightweight load profile (set URL, optional REQUESTS/CONCURRENCY)
+	@test -n "$${URL}" || (echo 'Set URL. Example: make perf-load URL="http://localhost:8000/healthz"'; exit 1)
+	@bash scripts/load_profile.sh "$${URL}" "$${REQUESTS:-200}" "$${CONCURRENCY:-20}"
+
+perf-explain: ## Print EXPLAIN plans for key journal/report queries (set COMPANY_ID)
+	@bash scripts/db_explain.sh "$${COMPANY_ID}"

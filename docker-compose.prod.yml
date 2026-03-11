@@ -7,8 +7,8 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DATABASE_URL: ${DATABASE_URL_PROD:-postgres://postgres:postgres@postgres:5432/sic_core}
-      REDIS_URL: ${REDIS_URL_PROD:-redis://redis:6379/0}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD:-change-me}
+      REDIS_URL: ${REDIS_URL_PROD:?REDIS_URL_PROD is required}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD:?DJANGO_SECRET_KEY_PROD is required}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_PROD:-localhost,127.0.0.1}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS_PROD:-http://localhost}
       LOG_LEVEL: ${LOG_LEVEL_PROD:-INFO}
@@ -34,8 +34,8 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DATABASE_URL: ${DATABASE_URL_PROD:-postgres://postgres:postgres@postgres:5432/sic_core}
-      REDIS_URL: ${REDIS_URL_PROD:-redis://redis:6379/0}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD:-change-me}
+      REDIS_URL: ${REDIS_URL_PROD:?REDIS_URL_PROD is required}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD:?DJANGO_SECRET_KEY_PROD is required}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_PROD:-localhost,127.0.0.1}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS_PROD:-http://localhost}
       JSON_LOGS: "true"
@@ -50,6 +50,10 @@ services:
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT_PROD:-30}
       GUNICORN_GRACEFUL_TIMEOUT: ${GUNICORN_GRACEFUL_TIMEOUT_PROD:-30}
       GUNICORN_KEEPALIVE: ${GUNICORN_KEEPALIVE_PROD:-2}
+      GUNICORN_ACCESS_LOG: ${GUNICORN_ACCESS_LOG_PROD:-false}
+      ENABLE_ADMIN_SITE: ${ENABLE_ADMIN_SITE_PROD:-false}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS_PROD:-false}
+      ENABLE_EXAMPLE_API: ${ENABLE_EXAMPLE_API_PROD:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully

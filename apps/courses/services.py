@@ -1,5 +1,6 @@
 from rest_framework.exceptions import ValidationError
 
+from apps.accounts.visibility import invalidate_student_teacher_cache
 from apps.courses.models import Course, CourseEnrollment
 from apps.users.models import User
 
@@ -46,6 +47,7 @@ def enroll_student(*, course: Course, student: User) -> CourseEnrollment:
     enrollment = CourseEnrollment(course=course, student=student)
     enrollment.full_clean()
     enrollment.save()
+    invalidate_student_teacher_cache(student_id=student.id)
     return enrollment
 
 
@@ -53,3 +55,4 @@ def unenroll_student(*, course: Course, student: User) -> None:
     deleted, _ = CourseEnrollment.objects.filter(course=course, student=student).delete()
     if deleted == 0:
         raise ValidationError({"student_id": "Student is not enrolled in this course."})
+    invalidate_student_teacher_cache(student_id=student.id)

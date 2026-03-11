@@ -1,16 +1,18 @@
 import structlog
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.pagination import paginate_queryset
 from apps.companies import selectors as company_selectors
 from apps.journal import selectors, services
 from apps.journal.api.serializers import (
     JournalEntryCreateSerializer,
     JournalEntryDetailSerializer,
+    JournalEntryListPaginatedSerializer,
     JournalEntryListSerializer,
     JournalEntryReverseSerializer,
 )
@@ -27,9 +29,18 @@ class JournalEntryListCreateView(APIView):
     @extend_schema(
         operation_id="list_journal_entries",
         summary="List journal entries",
-        description="Returns all journal entries for the given company ordered by entry number.",
+        description="Returns paginated journal entries for the company ordered by entry number.",
+        parameters=[
+            OpenApiParameter(
+                name="page",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Pagination page number.",
+            ),
+        ],
         responses={
-            200: JournalEntryListSerializer(many=True),
+            200: JournalEntryListPaginatedSerializer,
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -38,8 +49,10 @@ class JournalEntryListCreateView(APIView):
     )
     def get(self, request: Request, company_id: int) -> Response:
         company = self._get_company(company_id, request.user)
-        entries = selectors.list_journal_entries(company=company)
-        return Response(JournalEntryListSerializer(entries, many=True).data)
+        entries_qs = selectors.list_journal_entries(company=company)
+        paginator, page = paginate_queryset(request=request, queryset=entries_qs)
+        data = JournalEntryListSerializer(page, many=True).data
+        return paginator.get_paginated_response(data)
 
     @extend_schema(
         operation_id="create_journal_entry",

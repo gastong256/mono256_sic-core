@@ -1,8 +1,9 @@
 from .base import *  # noqa: F401, F403
-from .base import ALLOWED_HOSTS, SECRET_KEY, env
+from .base import ALLOWED_HOSTS, REDIS_URL, SECRET_KEY, env
 
 _UNSAFE_DEFAULTS = {
     "unsafe-default-do-not-use-in-production",
+    "change-me",
     "@qUUwZMC07hBh__DJANGO_SECRET_KEY__404aTm#HbUfcgtj__DJANGO_SECRET_KEY__zrUqWB%Q4lWOKhranF@X",
     "",
 }
@@ -19,6 +20,12 @@ if set(ALLOWED_HOSTS).issubset({"localhost", "127.0.0.1", "0.0.0.0"}):
     )
 
 DEBUG = False
+
+if not REDIS_URL:
+    raise RuntimeError(
+        "REDIS_URL is required in production. "
+        "A shared cache is required for consistent throttling and cache behavior."
+    )
 
 USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=True)
 if env.bool("USE_X_FORWARDED_PROTO", default=True):
@@ -37,3 +44,7 @@ SESSION_COOKIE_SAMESITE = env("SESSION_COOKIE_SAMESITE", default="Lax")
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = env("CSRF_COOKIE_SAMESITE", default="Lax")
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+ENABLE_ADMIN_SITE = env.bool("ENABLE_ADMIN_SITE", default=False)
+ENABLE_API_DOCS = env.bool("ENABLE_API_DOCS", default=False)
+ENABLE_EXAMPLE_API = env.bool("ENABLE_EXAMPLE_API", default=False)

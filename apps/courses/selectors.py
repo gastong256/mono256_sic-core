@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import Count, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.courses.models import Course, CourseEnrollment
@@ -6,7 +6,7 @@ from apps.users.models import User
 
 
 def list_courses(*, user: User) -> QuerySet[Course]:
-    qs = Course.objects.select_related("teacher")
+    qs = Course.objects.select_related("teacher").annotate(student_count=Count("enrollments"))
     if user.role == User.Role.ADMIN:
         return qs.all()
     if user.role == User.Role.TEACHER:
@@ -16,7 +16,9 @@ def list_courses(*, user: User) -> QuerySet[Course]:
 
 def get_course(*, pk: int, user: User) -> Course:
     try:
-        course = Course.objects.select_related("teacher").get(pk=pk)
+        course = Course.objects.select_related("teacher").annotate(
+            student_count=Count("enrollments")
+        ).get(pk=pk)
     except Course.DoesNotExist:
         raise NotFound("Course not found.")
 

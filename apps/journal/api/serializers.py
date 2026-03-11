@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from apps.journal.models import JournalEntry, JournalEntryLine
@@ -27,7 +25,7 @@ class JournalEntryLineWriteSerializer(serializers.Serializer):
         help_text="Positive amount.",
     )
 
-    def validate_amount(self, value: Decimal) -> Decimal:
+    def validate_amount(self, value):
         if value <= 0:
             raise serializers.ValidationError(
                 "El importe de cada línea debe ser mayor a cero."
@@ -37,8 +35,8 @@ class JournalEntryLineWriteSerializer(serializers.Serializer):
 
 class JournalEntryListSerializer(serializers.ModelSerializer):
     created_by = serializers.CharField(source="created_by.username", read_only=True)
-    total_debit = serializers.SerializerMethodField()
-    total_credit = serializers.SerializerMethodField()
+    total_debit = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    total_credit = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
     reversal_of_id = serializers.IntegerField(read_only=True)
     reversed_by_id = serializers.SerializerMethodField()
 
@@ -59,18 +57,6 @@ class JournalEntryListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_total_debit(self, obj: JournalEntry) -> Decimal:
-        return sum(
-            (line.amount for line in obj.lines.all() if line.type == JournalEntryLine.LineType.DEBIT),
-            Decimal("0"),
-        )
-
-    def get_total_credit(self, obj: JournalEntry) -> Decimal:
-        return sum(
-            (line.amount for line in obj.lines.all() if line.type == JournalEntryLine.LineType.CREDIT),
-            Decimal("0"),
-        )
-
     def get_reversed_by_id(self, obj: JournalEntry) -> int | None:
         try:
             return obj.reversed_by.id
@@ -84,6 +70,13 @@ class JournalEntryDetailSerializer(JournalEntryListSerializer):
     class Meta(JournalEntryListSerializer.Meta):
         fields = JournalEntryListSerializer.Meta.fields + ["lines"]
         read_only_fields = fields
+
+
+class JournalEntryListPaginatedSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = JournalEntryListSerializer(many=True)
 
 
 class JournalEntryCreateSerializer(serializers.Serializer):

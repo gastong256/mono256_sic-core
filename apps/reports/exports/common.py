@@ -1,16 +1,34 @@
 from __future__ import annotations
 
-from io import BytesIO
+from dataclasses import dataclass
+from tempfile import SpooledTemporaryFile
+from typing import BinaryIO, Protocol
 
-from django.http import HttpResponse
+from django.http import FileResponse
 
 EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def workbook_response(*, workbook: object, filename: str) -> HttpResponse:
-    stream = BytesIO()
-    workbook.save(stream)  # type: ignore[attr-defined]
-    stream.seek(0)
-    response = HttpResponse(stream.getvalue(), content_type=EXCEL_CONTENT_TYPE)
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response
+class SupportsClose(Protocol):
+    def close(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class WorkbookArtifact:
+    workbook: SupportsClose
+    stream: BinaryIO
+
+
+def create_xlsx_stream() -> BinaryIO:
+    return SpooledTemporaryFile(max_size=5 * 1024 * 1024, mode="w+b")
+
+
+def workbook_response(*, artifact: WorkbookArtifact, filename: str) -> FileResponse:
+    artifact.workbook.close()
+    artifact.stream.seek(0)
+    return FileResponse(
+        artifact.stream,
+        as_attachment=True,
+        filename=filename,
+        content_type=EXCEL_CONTENT_TYPE,
+    )

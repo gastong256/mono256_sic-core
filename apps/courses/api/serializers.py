@@ -26,6 +26,8 @@ class CourseSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_student_count(self, obj: Course) -> int:
+        if hasattr(obj, "student_count"):
+            return int(obj.student_count)
         return obj.enrollments.count()
 
 
@@ -60,11 +62,6 @@ class AvailableStudentSerializer(serializers.ModelSerializer):
 class EnrollmentCreateSerializer(serializers.Serializer):
     student_id = serializers.IntegerField(min_value=1)
 
-    def validate_student_id(self, value: int) -> int:
-        if not User.objects.filter(pk=value).exists():
-            raise serializers.ValidationError("Student not found.")
-        return value
-
 
 class TeacherCompanyItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -84,6 +81,29 @@ class TeacherCourseCompaniesResponseSerializer(serializers.Serializer):
     course_id = serializers.IntegerField()
     course_name = serializers.CharField()
     students = TeacherStudentCompaniesSerializer(many=True)
+
+
+class CoursePaginatedResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = CourseSerializer(many=True)
+
+
+class EnrollmentPaginatedResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = EnrollmentSerializer(many=True)
+
+
+class TeacherCourseCompaniesPaginatedResponseSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()
+    course_name = serializers.CharField()
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = TeacherStudentCompaniesSerializer(many=True)
 
 
 class TeacherCourseJournalEntrySerializer(serializers.ModelSerializer):

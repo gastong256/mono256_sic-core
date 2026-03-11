@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts import selectors, services
+from apps.accounts.visibility import bump_teacher_visibility_cache_version
 from apps.accounts.api.permissions import IsAuthenticatedForAccounts
 from apps.accounts.api.serializers import (
     AccountCreateSerializer,
@@ -268,6 +269,7 @@ class TeacherAccountVisibilityDetailView(_TeacherResolverMixin, APIView):
         visibility.is_visible = serializer.validated_data["is_visible"]
         visibility.full_clean()
         visibility.save(update_fields=["is_visible", "updated_at"])
+        bump_teacher_visibility_cache_version(teacher_id=teacher.pk)
 
         logger.info(
             "account_visibility_updated",

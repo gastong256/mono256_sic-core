@@ -1,40 +1,52 @@
 from __future__ import annotations
 
-def build_ledger_workbook(*, report: dict) -> object:
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
+from apps.reports.exports.common import WorkbookArtifact, create_xlsx_stream
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Libro Mayor"
 
-    bold = Font(bold=True)
+def build_ledger_workbook(*, report: dict) -> WorkbookArtifact:
+    from xlsxwriter import Workbook
 
-    ws["A1"] = "Libro Mayor"
-    ws["A1"].font = bold
-    ws["A2"] = f"Empresa: {report['company']}"
-    ws["A3"] = f"Desde: {report['date_from']}  Hasta: {report['date_to']}"
-    ws.append([])
+    stream = create_xlsx_stream()
+    wb = Workbook(stream, {"constant_memory": True})
+    ws = wb.add_worksheet("Libro Mayor")
+
+    bold = wb.add_format({"bold": True})
+    normal = wb.add_format()
+
+    row_idx = 0
+
+    def _write_row(values: list[object], *, is_bold: bool) -> None:
+        nonlocal row_idx
+        style = bold if is_bold else normal
+        for col_idx, value in enumerate(values):
+            if value is None:
+                ws.write_blank(row_idx, col_idx, None, style)
+            else:
+                ws.write(row_idx, col_idx, value, style)
+        row_idx += 1
+
+    _write_row(["Libro Mayor"], is_bold=True)
+    _write_row([f"Empresa: {report['company']}"], is_bold=False)
+    _write_row([f"Desde: {report['date_from']}  Hasta: {report['date_to']}"], is_bold=False)
+    _write_row([""], is_bold=False)
+
+    headers = ["Fecha", "Asiento", "Descripcion", "Referencia", "Debe", "Haber", "Saldo"]
 
     for account in report.get("accounts", []):
-        ws.append(
+        _write_row(
             [
                 f"{account.get('account_code')} - {account.get('account_name')}",
                 f"Tipo: {account.get('account_type')}",
                 f"Saldo normal: {account.get('normal_balance')}",
-            ]
+            ],
+            is_bold=True,
         )
-        for cell in ws[ws.max_row]:
-            cell.font = bold
 
-        ws.append(["Saldo inicial", "", "", "", "", account.get("opening_balance")])
-        headers = ["Fecha", "Asiento", "Descripcion", "Referencia", "Debe", "Haber", "Saldo"]
-        ws.append(headers)
-        for cell in ws[ws.max_row]:
-            cell.font = bold
+        _write_row(["Saldo inicial", "", "", "", "", account.get("opening_balance")], is_bold=False)
+        _write_row(headers, is_bold=True)
 
         for move in account.get("movements", []):
-            ws.append(
+            _write_row(
                 [
                     move.get("date"),
                     move.get("entry_number"),
@@ -43,10 +55,11 @@ def build_ledger_workbook(*, report: dict) -> object:
                     move.get("debit"),
                     move.get("credit"),
                     move.get("balance"),
-                ]
+                ],
+                is_bold=False,
             )
 
-        ws.append(
+        _write_row(
             [
                 "",
                 "",
@@ -55,10 +68,9 @@ def build_ledger_workbook(*, report: dict) -> object:
                 account.get("period_totals", {}).get("total_debit", "0.00"),
                 account.get("period_totals", {}).get("total_credit", "0.00"),
                 account.get("closing_balance"),
-            ]
+            ],
+            is_bold=True,
         )
-        for cell in ws[ws.max_row]:
-            cell.font = bold
-        ws.append([])
+        _write_row([""], is_bold=False)
 
-    return wb
+    return WorkbookArtifact(workbook=wb, stream=stream)
