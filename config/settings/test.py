@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from .base import *  # noqa: F401, F403
 from .base import env
 
@@ -15,6 +17,8 @@ DATABASES = {
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+STATIC_ROOT = Path(__file__).resolve().parent.parent.parent / ".staticfiles-test"
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 CACHES = {
     "default": {

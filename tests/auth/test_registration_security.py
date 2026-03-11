@@ -12,9 +12,10 @@ class TestRegistrationSecurity:
     def test_rate_limit_blocks_after_threshold(self):
         ip = "1.2.3.4"
         username = "student-x"
+        attempts_before_block = min(services.REGISTER_IP_LIMIT, services.REGISTER_USERNAME_LIMIT)
 
         blocked = None
-        for _ in range(services.REGISTER_IP_LIMIT):
+        for _ in range(attempts_before_block):
             blocked = services.check_registration_limits(ip=ip, username=username)
             assert blocked is None
 
