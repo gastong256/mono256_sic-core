@@ -19,7 +19,9 @@ coverage.xml
 .pytest_cache
 docs/
 postman/
-scripts/
+scripts/*
+!scripts/run_gunicorn.sh
+!scripts/run_migrations.sh
 tests/
 *.md
 !README.md
