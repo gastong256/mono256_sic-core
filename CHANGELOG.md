@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.2.1 (2026-03-11)
+
+### Bug Fixes
+
+- Add redis runtime dependency to prevent token endpoint failures in production
+  ([`ea3ed39`](https://github.com/gastong256/mono256_sic-core/commit/ea3ed39f9927fce27f7fc34b113641cfdad28cd6))
+
+- Harden codecov upload with v5 oidc and non-blocking fallback
+  ([`278ab8c`](https://github.com/gastong256/mono256_sic-core/commit/278ab8c29213d41b2401a5129c8a9044f54ed6f2))
+
+
 ## v0.2.0 (2026-03-11)
 
 ### Features
