@@ -4,7 +4,7 @@ ARG PYTHON_VERSION=3.12
 # ── builder ───────────────────────────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS builder
 
-WORKDIR /build
+WORKDIR /app
 
 RUN pip install --no-cache-dir uv==0.10.*
 
@@ -23,7 +23,7 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 WORKDIR /app
 
-COPY --from=builder /build/.venv .venv
+COPY --from=builder /app/.venv .venv
 
 COPY apps/ apps/
 COPY config/ config/
