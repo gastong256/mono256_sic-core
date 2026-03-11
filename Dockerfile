@@ -31,7 +31,7 @@ COPY scripts/run_gunicorn.sh scripts/run_gunicorn.sh
 COPY scripts/run_migrations.sh scripts/run_migrations.sh
 COPY manage.py .
 
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p /app/staticfiles && chown -R appuser:appgroup /app
 
 USER appuser
 
