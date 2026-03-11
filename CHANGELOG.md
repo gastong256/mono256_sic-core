@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.0 (2026-03-11)
+
+### Features
+
+- Add one-time bootstrap admin creation for no-shell environments
+  ([`5f476a1`](https://github.com/gastong256/mono256_sic-core/commit/5f476a12aabd185ae71047c35ddb39f14c8bdac8))
+
+
 ## v0.1.10 (2026-03-11)
 
 ### Bug Fixes
