@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.8 (2026-03-11)
+
+### Bug Fixes
+
+- Use RELEASE_PAT so release tags trigger downstream workflows
+  ([`8d62376`](https://github.com/gastong256/mono256_sic-core/commit/8d62376b4485e97dfd01b6555029486cf1667382))
+
+
 ## v0.1.7 (2026-03-11)
 
 ### Bug Fixes
