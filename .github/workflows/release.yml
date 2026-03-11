@@ -22,9 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout tested commit on main branch
+        run: git checkout -B main ${{ github.event.workflow_run.head_sha }}
 
       - uses: astral-sh/setup-uv@v3
         with:
