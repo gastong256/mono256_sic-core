@@ -10,7 +10,25 @@ Solution: use Django's run_before to drop both views BEFORE hordak 0055 runs.
 Migration 0003 recreates the views AFTER hordak 0055 completes.
 """
 
+import pkgutil
+
+import hordak.migrations as hordak_migrations
 from django.db import migrations
+
+
+def _latest_hordak_0055_migration() -> str | None:
+    migration_names = sorted(
+        module_info.name
+        for module_info in pkgutil.iter_modules(hordak_migrations.__path__)
+        if module_info.name.startswith("0055_")
+    )
+    if not migration_names:
+        return None
+    canonical_name = "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"
+    return canonical_name if canonical_name in migration_names else migration_names[-1]
+
+
+HORDAK_0055_MIGRATION = _latest_hordak_0055_migration()
 
 DROP_VIEWS_SQL = """
 DROP VIEW IF EXISTS hordak_leg_view;
@@ -107,9 +125,7 @@ class Migration(migrations.Migration):
     ]
 
     # Ensure this migration runs before hordak 0055 alters the leg columns.
-    run_before = [
-        ("hordak", "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"),
-    ]
+    run_before = [("hordak", HORDAK_0055_MIGRATION)] if HORDAK_0055_MIGRATION else []
 
     operations = [
         migrations.RunSQL(

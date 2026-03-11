@@ -6,7 +6,25 @@ ensuring it only runs after both are complete. The views are recreated with the
 same SQL as in hordak 0052 — they are compatible with the updated column types.
 """
 
+import pkgutil
+
+import hordak.migrations as hordak_migrations
 from django.db import migrations
+
+
+def _latest_hordak_0055_migration() -> str | None:
+    migration_names = sorted(
+        module_info.name
+        for module_info in pkgutil.iter_modules(hordak_migrations.__path__)
+        if module_info.name.startswith("0055_")
+    )
+    if not migration_names:
+        return None
+    canonical_name = "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"
+    return canonical_name if canonical_name in migration_names else migration_names[-1]
+
+
+HORDAK_TARGET_MIGRATION = _latest_hordak_0055_migration() or "0054_check_debit_credit_positive"
 
 RECREATE_LEG_VIEW_SQL = """
 CREATE VIEW hordak_leg_view AS (
@@ -97,7 +115,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("companies", "0002_pre_hordak_0055_drop_views"),
-        ("hordak", "0055_alter_leg_credit_alter_leg_currency_alter_leg_debit"),
+        ("hordak", HORDAK_TARGET_MIGRATION),
     ]
 
     operations = [
