@@ -35,7 +35,7 @@ jobs:
           version: "0.10.*"
 
       - name: Install deps
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Lint
         run: uv run ruff check .
