@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.9 (2026-03-11)
+
+### Bug Fixes
+
+- Trigger Render deploy on release published and manual dispatch
+  ([`f67d7cf`](https://github.com/gastong256/mono256_sic-core/commit/f67d7cf3e8d7db14ee01e3a56cc0e8849f3de1a9))
+
+
 ## v0.1.8 (2026-03-11)
 
 ### Bug Fixes
