@@ -33,6 +33,7 @@ Recommended:
 - `GUNICORN_ACCESS_LOG_PROD=false` (avoid duplicate request logging)
 - `RUN_MIGRATIONS_ON_START=true` (useful for platforms without pre-deploy hooks)
 - `COLLECTSTATIC_ON_MIGRATE=true`
+- `LOAD_CHART_ON_START=false` (set `true` only for initial chart bootstrap)
 
 ## 3. Deployment Procedure
 
@@ -64,8 +65,8 @@ Recommended:
   keep `RUN_MIGRATIONS_ON_START=true` so startup executes `migrate` + `collectstatic`.
 - Pre-deploy should run `collectstatic` so `/static/` is materialized in the container.
 - For first bootstrap only, optionally set:
-  - `LOAD_BASE_CHART_ON_MIGRATE_PROD=true`
-- Keep `LOAD_BASE_CHART_ON_MIGRATE_PROD=false` for normal deployments.
+  - `LOAD_CHART_ON_START_PROD=true`
+- Keep `LOAD_CHART_ON_START_PROD=false` for normal deployments.
 
 Manual migration (outside compose) if needed:
 

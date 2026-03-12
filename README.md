@@ -554,7 +554,7 @@ make docker-logs-prod
 
 The `migrate` service runs first and must complete successfully before `web` starts.
 Optional bootstrap:
-- set `LOAD_BASE_CHART_ON_MIGRATE_PROD=true` to load the base chart after migrations.
+- set `LOAD_CHART_ON_START_PROD=true` to load the base chart after migrations.
 - keep it `false` in steady-state deployments.
 
 ---

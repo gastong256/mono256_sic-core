@@ -3,13 +3,17 @@ set -euo pipefail
 
 MIGRATE_VERBOSITY="${MIGRATE_VERBOSITY:-1}"
 CREATE_SUPERUSER_ON_START="${CREATE_SUPERUSER_ON_START:-false}"
+LOAD_CHART_ON_START="${LOAD_CHART_ON_START:-false}"
 
 echo "Applying database migrations..."
 python manage.py migrate --noinput --verbosity "${MIGRATE_VERBOSITY}"
 
-if [[ "${LOAD_BASE_CHART_ON_MIGRATE:-false}" == "true" ]]; then
+if [[ "${LOAD_CHART_ON_START}" == "true" ]]; then
   echo "Loading base chart of accounts..."
   python manage.py load_chart_of_accounts
+elif [[ "${LOAD_CHART_ON_START}" != "false" ]]; then
+  echo "Invalid LOAD_CHART_ON_START value: ${LOAD_CHART_ON_START}. Use true/false."
+  exit 1
 fi
 
 if [[ "${COLLECTSTATIC_ON_MIGRATE:-true}" == "true" ]]; then

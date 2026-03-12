@@ -15,7 +15,7 @@ services:
       DB_CONN_MAX_AGE: ${DB_CONN_MAX_AGE_PROD:-60}
       DB_CONN_HEALTH_CHECKS: ${DB_CONN_HEALTH_CHECKS_PROD:-true}
       DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT_PROD:-5}
-      LOAD_BASE_CHART_ON_MIGRATE: ${LOAD_BASE_CHART_ON_MIGRATE_PROD:-false}
+      LOAD_CHART_ON_START: ${LOAD_CHART_ON_START_PROD:-false}
     command: ["/app/scripts/run_migrations.sh"]
     depends_on:
       postgres:
@@ -54,6 +54,7 @@ services:
       ENABLE_ADMIN_SITE: ${ENABLE_ADMIN_SITE_PROD:-false}
       ENABLE_API_DOCS: ${ENABLE_API_DOCS_PROD:-false}
       ENABLE_EXAMPLE_API: ${ENABLE_EXAMPLE_API_PROD:-false}
+      LOAD_CHART_ON_START: ${LOAD_CHART_ON_START_PROD:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully
