@@ -11,6 +11,7 @@ from apps.accounts.api.permissions import IsAuthenticatedForAccounts
 from apps.accounts.api.serializers import (
     AccountCreateSerializer,
     AccountUpdateSerializer,
+    AccountVisibilityBulkUpdateSerializer,
     AccountVisibilityUpdateSerializer,
 )
 from apps.common.role_resolution import resolve_teacher_for_actor
@@ -277,5 +278,84 @@ class TeacherAccountVisibilityDetailView(_TeacherResolverMixin, APIView):
             teacher_id=teacher.pk,
             account_id=account.pk,
             is_visible=visibility.is_visible,
+        )
+        return Response(selectors.get_teacher_visibility_chart(teacher=teacher))
+
+
+class TeacherAccountVisibilityBatchUpdateView(_TeacherResolverMixin, APIView):
+    permission_classes = [IsAuthenticatedForAccounts]
+
+    @extend_schema(
+        operation_id="batch_update_account_visibility_overrides",
+        summary="Batch set account visibility overrides",
+        request=AccountVisibilityBulkUpdateSerializer,
+        responses={200: OpenApiResponse(description="Updated visibility tree")},
+        tags=["account-visibility"],
+    )
+    def patch(self, request: Request) -> Response:
+        from django.utils import timezone
+        from rest_framework.exceptions import ValidationError
+        from apps.accounts.models import TeacherAccountVisibility
+        from hordak.models import Account
+
+        teacher = self._resolve_teacher(request)
+        serializer = AccountVisibilityBulkUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        updates = serializer.validated_data["updates"]
+        account_ids = [item["account_id"] for item in updates]
+        accounts = Account.objects.filter(pk__in=account_ids)
+        account_map = {account.pk: account for account in accounts}
+
+        missing_ids = [account_id for account_id in account_ids if account_id not in account_map]
+        if missing_ids:
+            raise ValidationError({"account_id": f"Account not found: {missing_ids[0]}."})
+
+        invalid_levels = [account.pk for account in accounts if account.level > 1]
+        if invalid_levels:
+            raise ValidationError({"account_id": "Only level-0/1 accounts can be hidden."})
+
+        now = timezone.now()
+        existing = {
+            visibility.account_id: visibility
+            for visibility in TeacherAccountVisibility.objects.filter(
+                teacher=teacher,
+                account_id__in=account_ids,
+            )
+        }
+        to_create: list[TeacherAccountVisibility] = []
+        to_update: list[TeacherAccountVisibility] = []
+
+        for item in updates:
+            account_id = item["account_id"]
+            is_visible = bool(item["is_visible"])
+            current = existing.get(account_id)
+            if current is None:
+                to_create.append(
+                    TeacherAccountVisibility(
+                        teacher=teacher,
+                        account=account_map[account_id],
+                        is_visible=is_visible,
+                    )
+                )
+                continue
+            if current.is_visible != is_visible:
+                current.is_visible = is_visible
+                current.updated_at = now
+                to_update.append(current)
+
+        if to_create:
+            TeacherAccountVisibility.objects.bulk_create(to_create)
+        if to_update:
+            TeacherAccountVisibility.objects.bulk_update(
+                to_update, fields=["is_visible", "updated_at"]
+            )
+
+        bump_teacher_visibility_cache_version(teacher_id=teacher.pk)
+        logger.info(
+            "account_visibility_batch_updated",
+            actor_id=request.user.pk,
+            teacher_id=teacher.pk,
+            updates_count=len(updates),
         )
         return Response(selectors.get_teacher_visibility_chart(teacher=teacher))

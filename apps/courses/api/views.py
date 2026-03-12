@@ -23,6 +23,7 @@ from apps.courses.api.serializers import (
     EnrollmentPaginatedResponseSerializer,
     EnrollmentCreateSerializer,
     EnrollmentSerializer,
+    TeacherCourseCompaniesResponseSerializer,
     TeacherCourseCompaniesPaginatedResponseSerializer,
     TeacherCourseJournalEntriesResponseSerializer,
     TeacherCourseJournalEntrySerializer,
@@ -210,23 +211,15 @@ class TeacherCourseCompaniesView(APIView):
         parameters=[OpenApiParameter(name="page", type=int, required=False)],
         responses={200: TeacherCourseCompaniesPaginatedResponseSerializer},
     )
-    def get(self, request: Request, course_id: int) -> Response:
-        course = selectors.get_course(pk=course_id, user=request.user)
+    @staticmethod
+    def _is_truthy(value: str | None) -> bool:
+        return (value or "").strip().lower() in {"1", "true", "yes", "on"}
 
-        enrollments_qs = (
-            CourseEnrollment.objects.filter(course=course)
-            .select_related("student")
-            .order_by("student__username")
-        )
-        paginator, page = paginate_queryset(request=request, queryset=enrollments_qs)
-        student_ids = [e.student_id for e in page]
-
-        companies = (
-            Company.objects.filter(owner_id__in=student_ids)
-            .select_related("owner")
-            .order_by("owner__username", "name")
-        )
-
+    @staticmethod
+    def _students_payload(
+        *, enrollments: list[CourseEnrollment], companies: list[Company]
+    ) -> list[dict]:
+        student_ids = [enrollment.student_id for enrollment in enrollments]
         companies_by_student: dict[int, list[dict]] = {sid: [] for sid in student_ids}
         for company in companies:
             companies_by_student[company.owner_id].append(
@@ -237,23 +230,74 @@ class TeacherCourseCompaniesView(APIView):
                     "created_at": company.created_at,
                 }
             )
-
-        data = [
+        return [
             {
                 "student_id": enrollment.student_id,
                 "student_username": enrollment.student.username,
                 "student_full_name": enrollment.student.get_full_name(),
                 "companies": companies_by_student.get(enrollment.student_id, []),
             }
-            for enrollment in page
+            for enrollment in enrollments
         ]
+
+    def get(self, request: Request, course_id: int, summary: bool = False) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        enrollments_qs = (
+            CourseEnrollment.objects.filter(course=course)
+            .select_related("student")
+            .order_by("student__username")
+        )
+        all_rows = summary or self._is_truthy(request.query_params.get("all"))
+
+        if all_rows:
+            enrollments = list(enrollments_qs)
+            student_ids = [e.student_id for e in enrollments]
+            companies = list(
+                Company.objects.filter(owner_id__in=student_ids)
+                .select_related("owner")
+                .order_by("owner__username", "name")
+            )
+            students = self._students_payload(enrollments=enrollments, companies=companies)
+
+            if summary:
+                payload = {
+                    "course_id": course.id,
+                    "course_name": course.name,
+                    "students": students,
+                }
+                response_serializer = TeacherCourseCompaniesResponseSerializer(payload)
+                return Response(response_serializer.data)
+
+            payload = {
+                "course_id": course.id,
+                "course_name": course.name,
+                "count": len(students),
+                "next": None,
+                "previous": None,
+                "results": students,
+                "students": students,
+            }
+            response_serializer = TeacherCourseCompaniesPaginatedResponseSerializer(payload)
+            return Response(response_serializer.data)
+
+        paginator, page = paginate_queryset(request=request, queryset=enrollments_qs)
+        page_enrollments = list(page)
+        student_ids = [e.student_id for e in page_enrollments]
+        companies = list(
+            Company.objects.filter(owner_id__in=student_ids)
+            .select_related("owner")
+            .order_by("owner__username", "name")
+        )
+        students = self._students_payload(enrollments=page_enrollments, companies=companies)
         payload = {
             "course_id": course.id,
             "course_name": course.name,
             "count": paginator.page.paginator.count,
             "next": paginator.get_next_link(),
             "previous": paginator.get_previous_link(),
-            "results": data,
+            "results": students,
+            "students": students,
         }
         response_serializer = TeacherCourseCompaniesPaginatedResponseSerializer(payload)
         return Response(response_serializer.data)
@@ -274,7 +318,11 @@ class TeacherCourseJournalEntriesView(APIView):
         ],
         responses={200: TeacherCourseJournalEntriesResponseSerializer},
     )
-    def get(self, request: Request, course_id: int) -> Response:
+    @staticmethod
+    def _is_truthy(value: str | None) -> bool:
+        return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    def _build_queryset(self, request: Request, *, course_id: int):
         from rest_framework.exceptions import ValidationError
 
         course = selectors.get_course(pk=course_id, user=request.user)
@@ -311,9 +359,29 @@ class TeacherCourseJournalEntriesView(APIView):
         if company_id:
             qs = qs.filter(company_id=company_id)
 
+        return qs
+
+    def get(self, request: Request, course_id: int, all_rows: bool = False) -> Response:
+        qs = self._build_queryset(request, course_id=course_id)
+        request_all = all_rows or self._is_truthy(request.query_params.get("all"))
+
+        if request_all:
+            rows = list(qs)
+            data = TeacherCourseJournalEntrySerializer(rows, many=True).data
+            payload = {
+                "count": len(data),
+                "next": None,
+                "previous": None,
+                "results": data,
+                "entries": data,
+            }
+            return Response(payload)
+
         paginator, page = paginate_queryset(request=request, queryset=qs)
         data = TeacherCourseJournalEntrySerializer(page, many=True).data
-        return paginator.get_paginated_response(data)
+        response = paginator.get_paginated_response(data)
+        response.data["entries"] = response.data.get("results", [])
+        return response
 
 
 class TeacherAvailableStudentsView(APIView):

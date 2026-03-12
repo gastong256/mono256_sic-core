@@ -54,3 +54,24 @@ class AccountUpdateSerializer(serializers.Serializer):
 class AccountVisibilityUpdateSerializer(serializers.Serializer):
     is_visible = serializers.BooleanField()
     teacher_id = serializers.IntegerField(required=False, min_value=1)
+
+
+class AccountVisibilityBulkItemSerializer(serializers.Serializer):
+    account_id = serializers.IntegerField(min_value=1)
+    is_visible = serializers.BooleanField()
+
+
+class AccountVisibilityBulkUpdateSerializer(serializers.Serializer):
+    teacher_id = serializers.IntegerField(required=False, min_value=1)
+    updates = AccountVisibilityBulkItemSerializer(many=True, min_length=1)
+
+    def validate_updates(self, value: list[dict]) -> list[dict]:
+        seen: set[int] = set()
+        for item in value:
+            account_id = int(item["account_id"])
+            if account_id in seen:
+                raise serializers.ValidationError(
+                    f"Duplicate account_id in batch payload: {account_id}."
+                )
+            seen.add(account_id)
+        return value

@@ -31,9 +31,21 @@ urlpatterns = [
         name="teacher-course-companies",
     ),
     path(
+        "teacher/courses/<int:course_id>/companies/summary/",
+        TeacherCourseCompaniesView.as_view(),
+        {"summary": True},
+        name="teacher-course-companies-summary",
+    ),
+    path(
         "teacher/courses/<int:course_id>/journal-entries/",
         TeacherCourseJournalEntriesView.as_view(),
         name="teacher-course-journal-entries",
+    ),
+    path(
+        "teacher/courses/<int:course_id>/journal-entries/all/",
+        TeacherCourseJournalEntriesView.as_view(),
+        {"all_rows": True},
+        name="teacher-course-journal-entries-all",
     ),
     path(
         "teacher/students/available/",

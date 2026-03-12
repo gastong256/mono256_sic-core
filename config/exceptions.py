@@ -1,3 +1,4 @@
+import math
 from typing import Any
 
 from django.db import IntegrityError
@@ -53,18 +54,33 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         code = "permission_denied"
         message = str(exc.detail) if hasattr(exc, "detail") else "Permission denied."
         detail = None
+    elif isinstance(exc, exceptions.Throttled):
+        code = "throttled"
+        message = str(exc.detail) if hasattr(exc, "detail") else "Request was throttled."
+        retry_after_raw = getattr(exc, "wait", None)
+        retry_after = math.ceil(float(retry_after_raw)) if retry_after_raw is not None else None
+        detail = {"retry_after": retry_after} if retry_after is not None else None
     else:
         code = _get_error_code(exc)
         message = str(getattr(exc, "detail", str(exc)))
         detail = None
 
-    response.data = {
+    payload = {
         "error": {
             "code": code,
             "message": message,
             "detail": detail,
         }
     }
+    if isinstance(exc, exceptions.Throttled):
+        retry_after_data = (
+            payload["error"]["detail"].get("retry_after")
+            if isinstance(payload["error"]["detail"], dict)
+            else None
+        )
+        if retry_after_data is not None:
+            payload["retry_after"] = retry_after_data
+    response.data = payload
     return response
 
 

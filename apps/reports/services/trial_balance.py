@@ -73,9 +73,13 @@ def get_trial_balance(
 
     if not rows:
         return {
+            "company_id": company.id,
             "company": company.name,
             "date_from": str(actual_date_from),
             "date_to": str(actual_date_to),
+            "rows": [],
+            "grand_total_debit": "0.00",
+            "grand_total_credit": "0.00",
             "groups": [],
             "totals": {
                 "total_debit": "0.00",
@@ -151,9 +155,13 @@ def get_trial_balance(
     groups_data.sort(key=lambda g: g["account_code"] or "")
 
     return {
+        "company_id": company.id,
         "company": company.name,
         "date_from": str(actual_date_from),
         "date_to": str(actual_date_to),
+        "rows": groups_data,
+        "grand_total_debit": f"{grand_debit:.2f}",
+        "grand_total_credit": f"{grand_credit:.2f}",
         "groups": groups_data,
         "totals": {
             "total_debit": f"{grand_debit:.2f}",

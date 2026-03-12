@@ -47,9 +47,12 @@ def get_ledger(
 
     if not accounts:
         return {
+            "company_id": company.id,
             "company": company.name,
             "date_from": str(date_from or actual_date_to),
             "date_to": str(actual_date_to),
+            "account_id": account_id,
+            "cards": [],
             "accounts": [],
         }
 
@@ -153,8 +156,11 @@ def get_ledger(
         )
 
     return {
+        "company_id": company.id,
         "company": company.name,
         "date_from": str(actual_date_from),
         "date_to": str(actual_date_to),
+        "account_id": account_id,
+        "cards": accounts_data,
         "accounts": accounts_data,
     }

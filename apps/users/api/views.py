@@ -167,7 +167,7 @@ class UserListView(APIView):
         if search:
             qs = qs.filter(username__icontains=search)
 
-        paginator, page = paginate_queryset(request=request, queryset=qs)
+        paginator, page = paginate_queryset(request=request, queryset=qs, page_size=20)
         return paginator.get_paginated_response(UserSerializer(page, many=True).data)
 
 
