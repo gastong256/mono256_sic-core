@@ -205,12 +205,6 @@ class CourseEnrollmentDeleteView(APIView):
 class TeacherCourseCompaniesView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
-    @extend_schema(
-        operation_id="teacher_courses_companies_retrieve",
-        tags=["teacher"],
-        parameters=[OpenApiParameter(name="page", type=int, required=False)],
-        responses={200: TeacherCourseCompaniesPaginatedResponseSerializer},
-    )
     @staticmethod
     def _is_truthy(value: str | None) -> bool:
         return (value or "").strip().lower() in {"1", "true", "yes", "on"}
@@ -240,6 +234,15 @@ class TeacherCourseCompaniesView(APIView):
             for enrollment in enrollments
         ]
 
+    @extend_schema(
+        operation_id="teacher_courses_companies_retrieve",
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="page", type=int, required=False),
+            OpenApiParameter(name="all", type=bool, required=False),
+        ],
+        responses={200: TeacherCourseCompaniesPaginatedResponseSerializer},
+    )
     def get(self, request: Request, course_id: int, summary: bool = False) -> Response:
         course = selectors.get_course(pk=course_id, user=request.user)
 
@@ -303,21 +306,19 @@ class TeacherCourseCompaniesView(APIView):
         return Response(response_serializer.data)
 
 
+class TeacherCourseCompaniesSummaryView(TeacherCourseCompaniesView):
+    @extend_schema(
+        operation_id="teacher_courses_companies_summary_retrieve",
+        tags=["teacher"],
+        responses={200: TeacherCourseCompaniesResponseSerializer},
+    )
+    def get(self, request: Request, course_id: int) -> Response:
+        return super().get(request=request, course_id=course_id, summary=True)
+
+
 class TeacherCourseJournalEntriesView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
-    @extend_schema(
-        operation_id="teacher_courses_journal_entries_retrieve",
-        tags=["teacher"],
-        parameters=[
-            OpenApiParameter(name="date_from", type=str, required=False),
-            OpenApiParameter(name="date_to", type=str, required=False),
-            OpenApiParameter(name="student_id", type=int, required=False),
-            OpenApiParameter(name="company_id", type=int, required=False),
-            OpenApiParameter(name="page", type=int, required=False),
-        ],
-        responses={200: TeacherCourseJournalEntriesResponseSerializer},
-    )
     @staticmethod
     def _is_truthy(value: str | None) -> bool:
         return (value or "").strip().lower() in {"1", "true", "yes", "on"}
@@ -361,6 +362,19 @@ class TeacherCourseJournalEntriesView(APIView):
 
         return qs
 
+    @extend_schema(
+        operation_id="teacher_courses_journal_entries_retrieve",
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="date_from", type=str, required=False),
+            OpenApiParameter(name="date_to", type=str, required=False),
+            OpenApiParameter(name="student_id", type=int, required=False),
+            OpenApiParameter(name="company_id", type=int, required=False),
+            OpenApiParameter(name="page", type=int, required=False),
+            OpenApiParameter(name="all", type=bool, required=False),
+        ],
+        responses={200: TeacherCourseJournalEntriesResponseSerializer},
+    )
     def get(self, request: Request, course_id: int, all_rows: bool = False) -> Response:
         qs = self._build_queryset(request, course_id=course_id)
         request_all = all_rows or self._is_truthy(request.query_params.get("all"))
@@ -382,6 +396,22 @@ class TeacherCourseJournalEntriesView(APIView):
         response = paginator.get_paginated_response(data)
         response.data["entries"] = response.data.get("results", [])
         return response
+
+
+class TeacherCourseJournalEntriesAllView(TeacherCourseJournalEntriesView):
+    @extend_schema(
+        operation_id="teacher_courses_journal_entries_all_retrieve",
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="date_from", type=str, required=False),
+            OpenApiParameter(name="date_to", type=str, required=False),
+            OpenApiParameter(name="student_id", type=int, required=False),
+            OpenApiParameter(name="company_id", type=int, required=False),
+        ],
+        responses={200: TeacherCourseJournalEntriesResponseSerializer},
+    )
+    def get(self, request: Request, course_id: int) -> Response:
+        return super().get(request=request, course_id=course_id, all_rows=True)
 
 
 class TeacherAvailableStudentsView(APIView):

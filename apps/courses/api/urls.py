@@ -7,6 +7,8 @@ from apps.courses.api.views import (
     CourseListCreateView,
     TeacherAvailableStudentsView,
     TeacherCourseCompaniesView,
+    TeacherCourseCompaniesSummaryView,
+    TeacherCourseJournalEntriesAllView,
     TeacherCourseJournalEntriesView,
 )
 
@@ -32,8 +34,7 @@ urlpatterns = [
     ),
     path(
         "teacher/courses/<int:course_id>/companies/summary/",
-        TeacherCourseCompaniesView.as_view(),
-        {"summary": True},
+        TeacherCourseCompaniesSummaryView.as_view(),
         name="teacher-course-companies-summary",
     ),
     path(
@@ -43,8 +44,7 @@ urlpatterns = [
     ),
     path(
         "teacher/courses/<int:course_id>/journal-entries/all/",
-        TeacherCourseJournalEntriesView.as_view(),
-        {"all_rows": True},
+        TeacherCourseJournalEntriesAllView.as_view(),
         name="teacher-course-journal-entries-all",
     ),
     path(
