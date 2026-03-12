@@ -51,6 +51,11 @@ class UserRegisterSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     registration_code = serializers.CharField(max_length=32)
 
+    def validate_username(self, value: str) -> str:
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
 
 class RegistrationCodeInfoSerializer(serializers.Serializer):
     code = serializers.CharField()

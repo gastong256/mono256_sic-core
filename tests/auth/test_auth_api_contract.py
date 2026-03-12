@@ -31,26 +31,30 @@ class TestAuthApiContract:
 
     def test_register_throttle_includes_retry_after(self, api_client: APIClient):
         info = services.get_current_registration_code_info()
-        payload = {
-            "username": "rate-limited-user",
-            "password": "S3curePass123!",
-            "password_confirm": "S3curePass123!",
-            "registration_code": info["code"],
-        }
         ip = "10.20.30.40"
-        attempts_before_block = min(services.REGISTER_IP_LIMIT, services.REGISTER_USERNAME_LIMIT)
+        attempts_before_block = services.REGISTER_IP_LIMIT
 
-        for _ in range(attempts_before_block):
+        for idx in range(attempts_before_block):
             api_client.post(
                 "/api/v1/auth/register/",
-                payload,
+                {
+                    "username": f"rate-limited-user-{idx}",
+                    "password": "S3curePass123!",
+                    "password_confirm": "S3curePass123!",
+                    "registration_code": info["code"],
+                },
                 format="json",
                 REMOTE_ADDR=ip,
             )
 
         blocked = api_client.post(
             "/api/v1/auth/register/",
-            payload,
+            {
+                "username": "rate-limited-user-blocked",
+                "password": "S3curePass123!",
+                "password_confirm": "S3curePass123!",
+                "registration_code": info["code"],
+            },
             format="json",
             REMOTE_ADDR=ip,
         )
