@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-03-12)
+
+### Bug Fixes
+
+- Avoid duplicate username collisions in register throttle test and add early username uniqueness
+  validation
+  ([`90003ce`](https://github.com/gastong256/mono256_sic-core/commit/90003cea8b916861fc1f2b5fe5785d78281bf528))
+
+- Restore course view schema annotations and split summary/all endpoints to avoid operationId
+  collisions
+  ([`a7e09e0`](https://github.com/gastong256/mono256_sic-core/commit/a7e09e0c35fb540b8b6a84dcfabfe23d2e22ff9d))
+
+### Features
+
+- Add batch visibility updates, teacher aggregated endpoints, and backward-compatible report/auth
+  response aliases
+  ([`75a5ae7`](https://github.com/gastong256/mono256_sic-core/commit/75a5ae73dd450304be1240cc162fe6306e030660))
+
+
 ## v0.2.1 (2026-03-11)
 
 ### Bug Fixes
