@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.3.1 (2026-03-12)
+
+### Bug Fixes
+
+- Remove legacy chart bootstrap flag and keep LOAD_CHART_ON_START only
+  ([`e6731b8`](https://github.com/gastong256/mono256_sic-core/commit/e6731b89e2c75ac25ec98ebb86835a47e66026ec))
+
+
 ## v0.3.0 (2026-03-12)
 
 ### Bug Fixes
