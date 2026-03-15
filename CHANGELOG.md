@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.3.2 (2026-03-15)
+
+### Bug Fixes
+
+- Remove redundant response aliases in reports and teacher endpoints
+  ([`fee4487`](https://github.com/gastong256/mono256_sic-core/commit/fee4487f632404f45c65ad346a7edbf498719bcd))
+
+
 ## v0.3.1 (2026-03-12)
 
 ### Bug Fixes
