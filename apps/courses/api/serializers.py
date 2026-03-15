@@ -103,8 +103,7 @@ class TeacherCourseCompaniesPaginatedResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
-    results = TeacherStudentCompaniesSerializer(many=True)
-    students = TeacherStudentCompaniesSerializer(many=True, required=False)
+    students = TeacherStudentCompaniesSerializer(many=True)
 
 
 class TeacherCourseJournalEntrySerializer(serializers.ModelSerializer):
@@ -148,8 +147,7 @@ class TeacherCourseJournalEntriesResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
-    results = TeacherCourseJournalEntrySerializer(many=True)
-    entries = TeacherCourseJournalEntrySerializer(many=True, required=False)
+    entries = TeacherCourseJournalEntrySerializer(many=True)
 
 
 class AvailableStudentsPaginatedResponseSerializer(serializers.Serializer):

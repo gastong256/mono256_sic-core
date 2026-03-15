@@ -9,6 +9,26 @@ from apps.users.models import User
 
 @pytest.mark.django_db
 class TestTeacherCourseAggregatedEndpoints:
+    def test_companies_paginated_returns_students_only(self, api_client: APIClient):
+        teacher = User.objects.create_user(
+            username="teacher-api0", password="x", role=User.Role.TEACHER
+        )
+        student = User.objects.create_user(
+            username="student-api0", password="x", role=User.Role.STUDENT
+        )
+        course = Course.objects.create(name="Curso API 0", teacher=teacher)
+        CourseEnrollment.objects.create(course=course, student=student)
+        Company.objects.create(name="Empresa Cero", owner=student)
+
+        api_client.force_authenticate(teacher)
+        response = api_client.get(f"/api/v1/teacher/courses/{course.id}/companies/")
+
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["count"] == 1
+        assert payload["students"][0]["student_id"] == student.id
+        assert "results" not in payload
+
     def test_companies_summary_returns_grouped_students(self, api_client: APIClient):
         teacher = User.objects.create_user(
             username="teacher-api", password="x", role=User.Role.TEACHER
@@ -48,5 +68,5 @@ class TestTeacherCourseAggregatedEndpoints:
         assert payload["count"] == 0
         assert payload["next"] is None
         assert payload["previous"] is None
-        assert payload["results"] == []
         assert payload["entries"] == []
+        assert "results" not in payload

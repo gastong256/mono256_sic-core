@@ -278,7 +278,6 @@ class TeacherCourseCompaniesView(APIView):
                 "count": len(students),
                 "next": None,
                 "previous": None,
-                "results": students,
                 "students": students,
             }
             response_serializer = TeacherCourseCompaniesPaginatedResponseSerializer(payload)
@@ -299,7 +298,6 @@ class TeacherCourseCompaniesView(APIView):
             "count": paginator.page.paginator.count,
             "next": paginator.get_next_link(),
             "previous": paginator.get_previous_link(),
-            "results": students,
             "students": students,
         }
         response_serializer = TeacherCourseCompaniesPaginatedResponseSerializer(payload)
@@ -386,16 +384,19 @@ class TeacherCourseJournalEntriesView(APIView):
                 "count": len(data),
                 "next": None,
                 "previous": None,
-                "results": data,
                 "entries": data,
             }
             return Response(payload)
 
         paginator, page = paginate_queryset(request=request, queryset=qs)
         data = TeacherCourseJournalEntrySerializer(page, many=True).data
-        response = paginator.get_paginated_response(data)
-        response.data["entries"] = response.data.get("results", [])
-        return response
+        payload = {
+            "count": paginator.page.paginator.count,
+            "next": paginator.get_next_link(),
+            "previous": paginator.get_previous_link(),
+            "entries": data,
+        }
+        return Response(payload)
 
 
 class TeacherCourseJournalEntriesAllView(TeacherCourseJournalEntriesView):

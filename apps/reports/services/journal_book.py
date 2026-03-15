@@ -87,7 +87,6 @@ def get_journal_book(
         "date_from": str(actual_date_from),
         "date_to": str(actual_date_to),
         "entries": entries_data,
-        "results": entries_data,
         "grand_total_debit": f"{grand_debit:.2f}",
         "grand_total_credit": f"{grand_credit:.2f}",
         "totals": {

@@ -1963,15 +1963,15 @@ components:
         previous:
           type: string
           nullable: true
-        results:
+        entries:
           type: array
           items:
             $ref: '#/components/schemas/TeacherCourseJournalEntry'
       required:
       - count
+      - entries
       - next
       - previous
-      - results
     TeacherCourseJournalEntry:
       type: object
       properties:
