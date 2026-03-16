@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.1 (2026-03-16)
+
+### Bug Fixes
+
+- Pyright ignores otel config and update uv lock
+  ([`cc22e0b`](https://github.com/gastong256/mono256_sic-core/commit/cc22e0b496a7f2b0386ce4be94d38d4226d7db49))
+
+
 ## v0.5.0 (2026-03-16)
 
 ### Bug Fixes
