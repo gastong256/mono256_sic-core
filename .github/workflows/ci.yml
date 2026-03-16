@@ -66,8 +66,17 @@ jobs:
         continue-on-error: true
         with:
           files: coverage.xml
+          disable_search: true
           use_oidc: true
           fail_ci_if_error: false
+
+      - name: Persist coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
 
       - name: Build Docker image
         run: docker build -t app:ci .

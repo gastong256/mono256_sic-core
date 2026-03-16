@@ -695,10 +695,25 @@ make test          # pytest
 make test-cov      # pytest + coverage report
 make shell         # Django shell
 make migrate       # apply migrations
+make install-hooks # install pre-commit git hooks
 make pre-commit    # run all pre-commit hooks
 ```
 
 `make test` runs a DB preflight check and fails fast if PostgreSQL is not reachable.
+
+Pre-commit is already configured in this repo and will auto-fix the most common
+issues before a commit, including:
+- trailing whitespace / EOF fixes
+- YAML/TOML sanity checks
+- `ruff --fix`
+- `ruff-format`
+- `black`
+
+Install it once with:
+
+```bash
+make install-hooks
+```
 
 Load the chart of accounts after a fresh DB:
 

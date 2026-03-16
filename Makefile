@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init run test lint format typecheck migrate makemigrations shell docker-build perf-load perf-explain
+.PHONY: help init install-hooks run test lint format typecheck migrate makemigrations shell docker-build perf-load perf-explain
 
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
@@ -9,6 +9,9 @@ help:
 
 init: ## Bootstrap project: replace placeholders, install deps + pre-commit hooks
 	@bash scripts/bootstrap.sh
+
+install-hooks: ## Install git hooks for pre-commit
+	uv run pre-commit install
 
 run: ## Start local development server
 	$(MANAGE) runserver 0.0.0.0:$${PORT:-8000}

@@ -42,9 +42,9 @@ class TestRegistrationSecurity:
             patch("apps.common.cache.cache.delete", side_effect=Exception("boom")),
         ):
             info = services.get_current_registration_code_info()
+            assert services.validate_registration_code(submitted_code=info["code"])
 
         assert info["code"]
-        assert services.validate_registration_code(submitted_code=info["code"])
 
     def test_rate_limit_degrades_without_cache_errors(self):
         with patch("apps.users.services.safe_cache_add", return_value=None):
