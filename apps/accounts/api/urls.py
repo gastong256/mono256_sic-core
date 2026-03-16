@@ -4,6 +4,7 @@ from apps.accounts.api.views import (
     CompanyAccountDetailView,
     CompanyAccountListCreateView,
     GlobalChartView,
+    TeacherAccountVisibilityBootstrapView,
     TeacherAccountVisibilityBatchUpdateView,
     TeacherAccountVisibilityDetailView,
     TeacherAccountVisibilityListView,
@@ -17,6 +18,11 @@ urlpatterns = [
         "accounts/visibility/",
         TeacherAccountVisibilityListView.as_view(),
         name="account-visibility",
+    ),
+    path(
+        "accounts/visibility/bootstrap/",
+        TeacherAccountVisibilityBootstrapView.as_view(),
+        name="account-visibility-bootstrap",
     ),
     path(
         "accounts/visibility/batch/",

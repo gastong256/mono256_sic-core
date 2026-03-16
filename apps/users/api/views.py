@@ -8,11 +8,15 @@ from rest_framework.views import APIView
 
 from apps.common.pagination import paginate_queryset
 from apps.common.permissions import IsAdminRole, IsTeacherOrAdminRole
+from apps.common.query_params import is_truthy_param, parse_include_param
+from apps.companies import selectors as company_selectors
+from apps.companies.api.serializers import CompanySelectorSerializer
 from apps.users import services
 from apps.users.api.serializers import (
     RegistrationCodeInfoSerializer,
     UserListPaginatedSerializer,
     UserRegisterSerializer,
+    UserSelectorSerializer,
     UserRoleUpdateSerializer,
     UserSerializer,
     UserUpdateSerializer,
@@ -28,11 +32,46 @@ class MeView(APIView):
     @extend_schema(
         operation_id="get_me",
         summary="Get current user",
+        parameters=[
+            OpenApiParameter(
+                name="include",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Comma-separated extra sections to include. "
+                    "Supported values: companies, capabilities, registration_code."
+                ),
+            )
+        ],
         responses={200: UserSerializer},
         tags=["auth"],
     )
     def get(self, request: Request) -> Response:
-        return Response(UserSerializer(request.user).data)
+        include = parse_include_param(request.query_params.get("include"))
+        data = UserSerializer(request.user).data
+
+        if "companies" in include:
+            companies = company_selectors.list_companies(user=request.user)
+            data["companies"] = CompanySelectorSerializer(companies, many=True).data
+
+        if "capabilities" in include:
+            data["capabilities"] = {
+                "can_manage_courses": request.user.role in {User.Role.TEACHER, User.Role.ADMIN},
+                "can_manage_visibility": request.user.role in {User.Role.TEACHER, User.Role.ADMIN},
+                "can_view_registration_code": request.user.role
+                in {User.Role.TEACHER, User.Role.ADMIN},
+                "can_manage_roles": request.user.role == User.Role.ADMIN,
+            }
+
+        if "registration_code" in include:
+            if request.user.role in {User.Role.TEACHER, User.Role.ADMIN}:
+                info = services.get_current_registration_code_info()
+                data["registration_code"] = RegistrationCodeInfoSerializer(info).data
+            else:
+                data["registration_code"] = None
+
+        return Response(data)
 
     @extend_schema(
         operation_id="update_me",
@@ -152,6 +191,21 @@ class UserListView(APIView):
                 required=False,
                 description="Case-insensitive username search.",
             ),
+            OpenApiParameter(
+                name="all",
+                type=bool,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Return the full list in one response.",
+            ),
+            OpenApiParameter(
+                name="summary",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                enum=["selector"],
+                description="Return a lightweight item shape for selectors.",
+            ),
         ],
         responses={200: UserListPaginatedSerializer},
         tags=["admin"],
@@ -167,8 +221,27 @@ class UserListView(APIView):
         if search:
             qs = qs.filter(username__icontains=search)
 
+        serializer_class = UserSelectorSerializer if request.query_params.get("summary") == "selector" else UserSerializer
+        if is_truthy_param(request.query_params.get("all")):
+            data = serializer_class(qs, many=True).data
+            return Response(
+                {
+                    "count": len(data),
+                    "next": None,
+                    "previous": None,
+                    "results": data,
+                }
+            )
+
         paginator, page = paginate_queryset(request=request, queryset=qs, page_size=20)
-        return paginator.get_paginated_response(UserSerializer(page, many=True).data)
+        return Response(
+            {
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": serializer_class(page, many=True).data,
+            }
+        )
 
 
 class TeacherRegistrationCodeInfoView(APIView):

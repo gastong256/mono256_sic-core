@@ -37,6 +37,13 @@ class CourseWriteSerializer(serializers.Serializer):
     teacher_id = serializers.IntegerField(required=False, min_value=1)
 
 
+class CourseSelectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ["id", "name", "code"]
+        read_only_fields = fields
+
+
 class EnrollmentSerializer(serializers.ModelSerializer):
     student_id = serializers.IntegerField(source="student.id", read_only=True)
     student_username = serializers.CharField(source="student.username", read_only=True)
@@ -88,6 +95,13 @@ class CoursePaginatedResponseSerializer(serializers.Serializer):
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
     results = CourseSerializer(many=True)
+
+
+class CourseSelectorListSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = CourseSelectorSerializer(many=True)
 
 
 class EnrollmentPaginatedResponseSerializer(serializers.Serializer):
@@ -148,6 +162,58 @@ class TeacherCourseJournalEntriesResponseSerializer(serializers.Serializer):
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
     entries = TeacherCourseJournalEntrySerializer(many=True)
+
+
+class TeacherDashboardStudentSummarySerializer(serializers.Serializer):
+    student_id = serializers.IntegerField()
+    student_username = serializers.CharField()
+    student_full_name = serializers.CharField(allow_blank=True)
+    company_count = serializers.IntegerField()
+    journal_entry_count = serializers.IntegerField()
+
+
+class TeacherCourseOverviewSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()
+    course_name = serializers.CharField()
+    course_code = serializers.CharField(allow_null=True, allow_blank=True)
+    teacher_id = serializers.IntegerField()
+    teacher_username = serializers.CharField()
+    student_count = serializers.IntegerField()
+    totals = serializers.DictField(child=serializers.IntegerField())
+    students = TeacherDashboardStudentSummarySerializer(many=True)
+
+
+class TeacherCoursesOverviewResponseSerializer(serializers.Serializer):
+    courses = TeacherCourseOverviewSerializer(many=True)
+
+
+class TeacherStudentContextStudentSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    first_name = serializers.CharField(allow_blank=True)
+    last_name = serializers.CharField(allow_blank=True)
+    full_name = serializers.CharField(allow_blank=True)
+    course_id = serializers.IntegerField(allow_null=True)
+    course_name = serializers.CharField(allow_null=True, allow_blank=True)
+
+
+class TeacherStudentContextCompanySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    tax_id = serializers.CharField(allow_blank=True)
+    account_count = serializers.IntegerField()
+    journal_entry_count = serializers.IntegerField()
+    last_entry_date = serializers.DateField(allow_null=True)
+    books_closed_until = serializers.DateField(allow_null=True)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+
+class TeacherStudentContextResponseSerializer(serializers.Serializer):
+    student = TeacherStudentContextStudentSerializer()
+    companies = TeacherStudentContextCompanySerializer(many=True)
+    selected_company_id = serializers.IntegerField(allow_null=True)
+    journal_entries = TeacherCourseJournalEntrySerializer(many=True)
 
 
 class AvailableStudentsPaginatedResponseSerializer(serializers.Serializer):

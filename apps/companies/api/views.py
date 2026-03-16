@@ -1,12 +1,18 @@
 import structlog
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.common.pagination import paginate_queryset
+from apps.common.query_params import is_truthy_param
 from apps.companies import selectors, services
-from apps.companies.api.serializers import CompanySerializer, CompanyWriteSerializer
+from apps.companies.api.serializers import (
+    CompanySelectorSerializer,
+    CompanySerializer,
+    CompanyWriteSerializer,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -15,6 +21,25 @@ logger = structlog.get_logger(__name__)
     list=extend_schema(
         operation_id="list_companies",
         summary="List companies",
+        parameters=[
+            OpenApiParameter(name="page", type=int, required=False),
+            OpenApiParameter(
+                name="all",
+                type=bool,
+                required=False,
+                description="Return the full list in one response.",
+            ),
+            OpenApiParameter(
+                name="summary",
+                type=str,
+                required=False,
+                enum=["selector"],
+                description="Return a lightweight item shape for selectors.",
+            ),
+        ],
+        responses={
+            200: CompanySerializer(many=True),
+        },
         tags=["companies"],
     ),
     retrieve=extend_schema(
@@ -80,6 +105,33 @@ class CompanyViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update"):
             return CompanyWriteSerializer
         return CompanySerializer
+
+    def list(self, request: Request, *args, **kwargs) -> Response:
+        queryset = self.get_queryset()
+        summary = request.query_params.get("summary")
+        serializer_class = CompanySelectorSerializer if summary == "selector" else CompanySerializer
+
+        if is_truthy_param(request.query_params.get("all")):
+            data = serializer_class(queryset, many=True).data
+            return Response(
+                {
+                    "count": len(data),
+                    "next": None,
+                    "previous": None,
+                    "results": data,
+                }
+            )
+
+        paginator, page = paginate_queryset(request=request, queryset=queryset)
+        data = serializer_class(page, many=True).data
+        return Response(
+            {
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": data,
+            }
+        )
 
     def get_object(self):
         return selectors.get_company(pk=self.kwargs["pk"], user=self.request.user)

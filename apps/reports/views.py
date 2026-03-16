@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.companies import selectors as company_selectors
+from apps.common.query_params import parse_include_param
 from apps.reports.exports import (
     build_journal_book_workbook,
     build_ledger_workbook,
@@ -107,6 +108,13 @@ class LedgerView(APIView):
                 description="Filter to a single level-3 account by its ID.",
                 required=False,
             ),
+            OpenApiParameter(
+                name="include",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Optional extra sections. Supported values: account_options.",
+                required=False,
+            ),
         ],
         responses={
             200: OpenApiResponse(description="Libro Mayor report"),
@@ -129,6 +137,9 @@ class LedgerView(APIView):
             date_to=params.validated_data.get("date_to"),
             account_id=params.validated_data.get("account_id"),
         )
+        include = parse_include_param(request.query_params.get("include"))
+        if "account_options" in include:
+            data["account_options"] = ledger.list_account_options(company=company)
         logger.debug("report_ledger", company_id=company.pk, user=request.user.username)
         return Response(data)
 

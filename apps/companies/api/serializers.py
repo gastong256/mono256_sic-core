@@ -43,3 +43,19 @@ class CompanyWriteSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Simulated CUIT (optional).",
     )
+
+
+class CompanySelectorSerializer(serializers.ModelSerializer):
+    owner_username = serializers.CharField(source="owner.username", read_only=True)
+
+    class Meta:
+        model = Company
+        fields = ["id", "name", "owner_username"]
+        read_only_fields = fields
+
+
+class CompanySelectorListSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = CompanySelectorSerializer(many=True)

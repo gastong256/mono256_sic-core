@@ -22,6 +22,17 @@ def _balance_delta(account_type: str, debit: Decimal, credit: Decimal) -> Decima
     return credit - debit
 
 
+def list_account_options(*, company: Company) -> list[dict]:
+    return [
+        {
+            "id": account.pk,
+            "code": account.full_code,
+            "name": account.name,
+        }
+        for account in Account.objects.filter(company_account__company=company).order_by("full_code")
+    ]
+
+
 def get_ledger(
     *,
     company: Company,

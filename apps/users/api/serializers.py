@@ -65,6 +65,25 @@ class RegistrationCodeInfoSerializer(serializers.Serializer):
     valid_until = serializers.DateTimeField()
 
 
+class UserSelectorSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name", "full_name", "role"]
+        read_only_fields = fields
+
+    def get_full_name(self, obj: User) -> str:
+        return obj.get_full_name()
+
+
+class UserSelectorListSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = UserSelectorSerializer(many=True)
+
+
 class UserListPaginatedSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     next = serializers.CharField(allow_null=True)

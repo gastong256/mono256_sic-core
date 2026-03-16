@@ -10,6 +10,8 @@ from apps.courses.api.views import (
     TeacherCourseCompaniesSummaryView,
     TeacherCourseJournalEntriesAllView,
     TeacherCourseJournalEntriesView,
+    TeacherCoursesOverviewView,
+    TeacherStudentContextView,
 )
 
 app_name = "courses"
@@ -33,6 +35,11 @@ urlpatterns = [
         name="teacher-course-companies",
     ),
     path(
+        "teacher/courses/overview/",
+        TeacherCoursesOverviewView.as_view(),
+        name="teacher-courses-overview",
+    ),
+    path(
         "teacher/courses/<int:course_id>/companies/summary/",
         TeacherCourseCompaniesSummaryView.as_view(),
         name="teacher-course-companies-summary",
@@ -51,5 +58,10 @@ urlpatterns = [
         "teacher/students/available/",
         TeacherAvailableStudentsView.as_view(),
         name="teacher-available-students",
+    ),
+    path(
+        "teacher/students/<int:student_id>/context/",
+        TeacherStudentContextView.as_view(),
+        name="teacher-student-context",
     ),
 ]

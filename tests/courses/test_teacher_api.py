@@ -9,6 +9,22 @@ from apps.users.models import User
 
 @pytest.mark.django_db
 class TestTeacherCourseAggregatedEndpoints:
+    def test_courses_support_all_and_selector_summary(self, api_client: APIClient):
+        teacher = User.objects.create_user(
+            username="teacher-course-selector", password="x", role=User.Role.TEACHER
+        )
+        Course.objects.create(name="Curso Uno", teacher=teacher)
+        Course.objects.create(name="Curso Dos", teacher=teacher)
+
+        api_client.force_authenticate(teacher)
+        response = api_client.get("/api/v1/courses/?all=true&summary=selector")
+
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["count"] == 2
+        assert payload["results"][0]["id"]
+        assert "student_count" not in payload["results"][0]
+
     def test_companies_paginated_returns_students_only(self, api_client: APIClient):
         teacher = User.objects.create_user(
             username="teacher-api0", password="x", role=User.Role.TEACHER
@@ -50,6 +66,27 @@ class TestTeacherCourseAggregatedEndpoints:
         assert payload["students"][0]["student_id"] == student.id
         assert len(payload["students"][0]["companies"]) == 1
 
+    def test_courses_overview_returns_aggregated_student_counts(self, api_client: APIClient):
+        teacher = User.objects.create_user(
+            username="teacher-overview", password="x", role=User.Role.TEACHER
+        )
+        student = User.objects.create_user(
+            username="student-overview", password="x", role=User.Role.STUDENT
+        )
+        course = Course.objects.create(name="Curso Overview", teacher=teacher)
+        CourseEnrollment.objects.create(course=course, student=student)
+        Company.objects.create(name="Empresa Overview", owner=student)
+
+        api_client.force_authenticate(teacher)
+        response = api_client.get("/api/v1/teacher/courses/overview/")
+
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["courses"][0]["course_id"] == course.id
+        assert payload["courses"][0]["students"][0]["student_id"] == student.id
+        assert payload["courses"][0]["students"][0]["company_count"] == 1
+        assert payload["courses"][0]["totals"]["company_count"] == 1
+
     def test_journal_entries_all_returns_single_payload(self, api_client: APIClient):
         teacher = User.objects.create_user(
             username="teacher-api2", password="x", role=User.Role.TEACHER
@@ -70,3 +107,26 @@ class TestTeacherCourseAggregatedEndpoints:
         assert payload["previous"] is None
         assert payload["entries"] == []
         assert "results" not in payload
+
+    def test_teacher_student_context_returns_company_summaries(self, api_client: APIClient):
+        teacher = User.objects.create_user(
+            username="teacher-context", password="x", role=User.Role.TEACHER
+        )
+        student = User.objects.create_user(
+            username="student-context", password="x", role=User.Role.STUDENT
+        )
+        course = Course.objects.create(name="Curso Context", teacher=teacher)
+        CourseEnrollment.objects.create(course=course, student=student)
+        company = Company.objects.create(name="Empresa Context", owner=student)
+
+        api_client.force_authenticate(teacher)
+        response = api_client.get(
+            f"/api/v1/teacher/students/{student.id}/context/?company_id={company.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["student"]["id"] == student.id
+        assert payload["selected_company_id"] == company.id
+        assert payload["companies"][0]["journal_entry_count"] == 0
+        assert payload["journal_entries"] == []

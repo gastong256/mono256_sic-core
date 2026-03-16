@@ -75,3 +75,9 @@ class AccountVisibilityBulkUpdateSerializer(serializers.Serializer):
                 )
             seen.add(account_id)
         return value
+
+
+class AccountVisibilityBootstrapSerializer(serializers.Serializer):
+    selected_teacher_id = serializers.IntegerField(allow_null=True)
+    teachers = serializers.ListField(child=serializers.DictField(), allow_empty=True)
+    chart = serializers.ListField(child=serializers.DictField(), allow_empty=True)

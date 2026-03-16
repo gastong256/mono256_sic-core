@@ -1,5 +1,5 @@
 import structlog
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -11,11 +11,13 @@ from apps.accounts.api.permissions import IsAuthenticatedForAccounts
 from apps.accounts.api.serializers import (
     AccountCreateSerializer,
     AccountUpdateSerializer,
+    AccountVisibilityBootstrapSerializer,
     AccountVisibilityBulkUpdateSerializer,
     AccountVisibilityUpdateSerializer,
 )
 from apps.common.role_resolution import resolve_teacher_for_actor
 from apps.companies import selectors as company_selectors
+from apps.users.api.serializers import UserSelectorSerializer
 from apps.users.models import User
 
 logger = structlog.get_logger(__name__)
@@ -233,6 +235,56 @@ class TeacherAccountVisibilityListView(_TeacherResolverMixin, APIView):
     def get(self, request: Request) -> Response:
         teacher = self._resolve_teacher(request)
         return Response(selectors.get_teacher_visibility_chart(teacher=teacher))
+
+
+class TeacherAccountVisibilityBootstrapView(APIView):
+    permission_classes = [IsAuthenticatedForAccounts]
+
+    @extend_schema(
+        operation_id="bootstrap_account_visibility_chart",
+        summary="Bootstrap account visibility management",
+        parameters=[
+            OpenApiParameter(name="teacher_id", type=int, required=False),
+        ],
+        responses={200: AccountVisibilityBootstrapSerializer},
+        tags=["account-visibility"],
+    )
+    def get(self, request: Request) -> Response:
+        from rest_framework.exceptions import ValidationError
+
+        selected_teacher: User | None = None
+        if request.user.role == User.Role.TEACHER:
+            selected_teacher = request.user
+            teachers = [request.user]
+        elif request.user.role == User.Role.ADMIN:
+            teachers = list(User.objects.filter(role=User.Role.TEACHER).order_by("username"))
+            teacher_id_raw = request.query_params.get("teacher_id")
+            if teacher_id_raw:
+                try:
+                    selected_id = int(teacher_id_raw)
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError({"teacher_id": "teacher_id must be an integer."}) from exc
+                selected_teacher = next((teacher for teacher in teachers if teacher.id == selected_id), None)
+                if selected_teacher is None:
+                    raise ValidationError({"teacher_id": "Teacher not found."})
+            elif teachers:
+                selected_teacher = teachers[0]
+        else:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Teacher or admin role required.")
+
+        chart = (
+            selectors.get_teacher_visibility_chart(teacher=selected_teacher)
+            if selected_teacher is not None
+            else []
+        )
+        payload = {
+            "selected_teacher_id": selected_teacher.id if selected_teacher is not None else None,
+            "teachers": UserSelectorSerializer(teachers, many=True).data,
+            "chart": chart,
+        }
+        return Response(payload)
 
 
 class TeacherAccountVisibilityDetailView(_TeacherResolverMixin, APIView):

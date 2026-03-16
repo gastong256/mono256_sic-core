@@ -3,6 +3,7 @@ import datetime
 import structlog
 from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework.exceptions import NotFound
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -11,12 +12,14 @@ from rest_framework.views import APIView
 
 from apps.common.pagination import paginate_queryset
 from apps.common.permissions import IsTeacherOrAdminRole
+from apps.common.query_params import is_truthy_param
 from apps.common.role_resolution import resolve_teacher_for_actor
 from apps.companies.models import Company
 from apps.courses import selectors, services
 from apps.courses.api.serializers import (
     AvailableStudentsPaginatedResponseSerializer,
     AvailableStudentSerializer,
+    CourseSelectorSerializer,
     CourseSerializer,
     CoursePaginatedResponseSerializer,
     CourseWriteSerializer,
@@ -27,6 +30,8 @@ from apps.courses.api.serializers import (
     TeacherCourseCompaniesPaginatedResponseSerializer,
     TeacherCourseJournalEntriesResponseSerializer,
     TeacherCourseJournalEntrySerializer,
+    TeacherCoursesOverviewResponseSerializer,
+    TeacherStudentContextResponseSerializer,
 )
 from apps.courses.models import CourseEnrollment
 from apps.journal.models import JournalEntry
@@ -49,14 +54,48 @@ class CourseListCreateView(APIView):
     @extend_schema(
         operation_id="courses_list",
         tags=["courses"],
-        parameters=[OpenApiParameter(name="page", type=int, required=False)],
+        parameters=[
+            OpenApiParameter(name="page", type=int, required=False),
+            OpenApiParameter(name="all", type=bool, required=False),
+            OpenApiParameter(
+                name="summary",
+                type=str,
+                required=False,
+                enum=["selector"],
+                description="Return a lightweight item shape for selectors.",
+            ),
+        ],
         responses={200: CoursePaginatedResponseSerializer},
     )
     def get(self, request: Request) -> Response:
         courses_qs = selectors.list_courses(user=request.user)
+        serializer_class = (
+            CourseSelectorSerializer
+            if request.query_params.get("summary") == "selector"
+            else CourseSerializer
+        )
+
+        if is_truthy_param(request.query_params.get("all")):
+            data = serializer_class(courses_qs, many=True).data
+            return Response(
+                {
+                    "count": len(data),
+                    "next": None,
+                    "previous": None,
+                    "results": data,
+                }
+            )
+
         paginator, page = paginate_queryset(request=request, queryset=courses_qs)
-        data = CourseSerializer(page, many=True).data
-        return paginator.get_paginated_response(data)
+        data = serializer_class(page, many=True).data
+        return Response(
+            {
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": data,
+            }
+        )
 
     @extend_schema(
         operation_id="courses_create",
@@ -206,10 +245,6 @@ class TeacherCourseCompaniesView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
     @staticmethod
-    def _is_truthy(value: str | None) -> bool:
-        return (value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-    @staticmethod
     def _students_payload(
         *, enrollments: list[CourseEnrollment], companies: list[Company]
     ) -> list[dict]:
@@ -251,7 +286,7 @@ class TeacherCourseCompaniesView(APIView):
             .select_related("student")
             .order_by("student__username")
         )
-        all_rows = summary or self._is_truthy(request.query_params.get("all"))
+        all_rows = summary or is_truthy_param(request.query_params.get("all"))
 
         if all_rows:
             enrollments = list(enrollments_qs)
@@ -317,10 +352,6 @@ class TeacherCourseCompaniesSummaryView(TeacherCourseCompaniesView):
 class TeacherCourseJournalEntriesView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
 
-    @staticmethod
-    def _is_truthy(value: str | None) -> bool:
-        return (value or "").strip().lower() in {"1", "true", "yes", "on"}
-
     def _build_queryset(self, request: Request, *, course_id: int):
         from rest_framework.exceptions import ValidationError
 
@@ -375,7 +406,7 @@ class TeacherCourseJournalEntriesView(APIView):
     )
     def get(self, request: Request, course_id: int, all_rows: bool = False) -> Response:
         qs = self._build_queryset(request, course_id=course_id)
-        request_all = all_rows or self._is_truthy(request.query_params.get("all"))
+        request_all = all_rows or is_truthy_param(request.query_params.get("all"))
 
         if request_all:
             rows = list(qs)
@@ -457,3 +488,75 @@ class TeacherAvailableStudentsView(APIView):
         paginator, page = paginate_queryset(request=request, queryset=students_qs)
         data = AvailableStudentSerializer(page, many=True).data
         return paginator.get_paginated_response(data)
+
+
+class TeacherCoursesOverviewView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="teacher_courses_overview_retrieve",
+        tags=["teacher"],
+        responses={200: TeacherCoursesOverviewResponseSerializer},
+    )
+    def get(self, request: Request) -> Response:
+        data = {"courses": selectors.list_course_overviews(user=request.user)}
+        return Response(data)
+
+
+class TeacherStudentContextView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="teacher_student_context_retrieve",
+        tags=["teacher"],
+        parameters=[
+            OpenApiParameter(name="company_id", type=int, required=False),
+            OpenApiParameter(
+                name="entries_limit",
+                type=int,
+                required=False,
+                description="Maximum number of most recent journal entries to include (max 100).",
+            ),
+        ],
+        responses={200: TeacherStudentContextResponseSerializer},
+    )
+    def get(self, request: Request, student_id: int) -> Response:
+        from rest_framework.exceptions import ValidationError
+
+        payload = selectors.get_teacher_student_context(user=request.user, student_id=student_id)
+
+        selected_company_id: int | None = None
+        entries_data: list[dict] = []
+        company_id_raw = request.query_params.get("company_id")
+        if company_id_raw:
+            try:
+                selected_company_id = int(company_id_raw)
+            except (TypeError, ValueError) as exc:
+                raise ValidationError({"company_id": "company_id must be an integer."}) from exc
+
+            company_match = next(
+                (company for company in payload["companies"] if company["id"] == selected_company_id),
+                None,
+            )
+            if company_match is None:
+                raise NotFound("Company not found.")
+
+            entries_limit_raw = request.query_params.get("entries_limit")
+            try:
+                entries_limit = int(entries_limit_raw) if entries_limit_raw else 25
+            except (TypeError, ValueError) as exc:
+                raise ValidationError({"entries_limit": "entries_limit must be an integer."}) from exc
+            if entries_limit < 1 or entries_limit > 100:
+                raise ValidationError({"entries_limit": "entries_limit must be between 1 and 100."})
+
+            company_qs = (
+                JournalEntry.objects.filter(company_id=selected_company_id)
+                .select_related("company", "company__owner", "created_by")
+                .prefetch_related("lines__account", "reversed_by")
+                .order_by("-date", "-entry_number")
+            )[:entries_limit]
+            entries_data = TeacherCourseJournalEntrySerializer(company_qs, many=True).data
+
+        payload["selected_company_id"] = selected_company_id
+        payload["journal_entries"] = entries_data
+        return Response(payload)
