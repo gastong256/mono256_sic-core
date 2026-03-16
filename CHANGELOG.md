@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.4.0 (2026-03-16)
+
+### Bug Fixes
+
+- Apply black format
+  ([`77b7f10`](https://github.com/gastong256/mono256_sic-core/commit/77b7f1007cf3d31c4e0bbfd880c15b216d6de7bf))
+
+### Features
+
+- Add aggregated bootstrap and selector-friendly endpoints
+  ([`c3fc4f3`](https://github.com/gastong256/mono256_sic-core/commit/c3fc4f38afc47950ef835ee4c7bc1666b9883fc9))
+
+
 ## v0.3.2 (2026-03-15)
 
 ### Bug Fixes
