@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.5.0 (2026-03-16)
+
+### Bug Fixes
+
+- Apply black format
+  ([`8aeb143`](https://github.com/gastong256/mono256_sic-core/commit/8aeb1439f6588822fa7fe1d47fb57630936fb936))
+
+- Update uv lock
+  ([`51d03c7`](https://github.com/gastong256/mono256_sic-core/commit/51d03c7a968ebcde396aa6afb738fafe02100f2e))
+
+### Features
+
+- Add versioned report caching and resilient readiness checks
+  ([`1e312df`](https://github.com/gastong256/mono256_sic-core/commit/1e312df9c887c72cd55cfc4eab091edfd4190edd))
+
+
 ## v0.4.0 (2026-03-16)
 
 ### Bug Fixes
