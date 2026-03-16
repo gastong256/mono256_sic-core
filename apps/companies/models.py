@@ -6,6 +6,12 @@ from apps.common.models import TimeStampedModel
 
 class Company(TimeStampedModel):
     name = models.CharField(max_length=255, verbose_name="name")
+    description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="description",
+        help_text="Optional business description for a more realistic simulation.",
+    )
     tax_id = models.CharField(
         max_length=20,
         blank=True,

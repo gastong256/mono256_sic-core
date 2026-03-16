@@ -14,6 +14,7 @@ from apps.common.pagination import paginate_queryset
 from apps.common.query_params import is_truthy_param
 from apps.companies import selectors, services
 from apps.companies.api.serializers import (
+    CompanyCreateSerializer,
     CompanySelectorSerializer,
     CompanySerializer,
     CompanyWriteSerializer,
@@ -55,7 +56,7 @@ logger = structlog.get_logger(__name__)
     create=extend_schema(
         operation_id="create_company",
         summary="Create a company",
-        request=CompanyWriteSerializer,
+        request=CompanyCreateSerializer,
         responses={
             201: CompanySerializer,
             400: OpenApiResponse(description="Validation error"),
@@ -109,7 +110,9 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return selectors.list_companies(user=self.request.user)
 
     def get_serializer_class(self):
-        if self.action in ("create", "update", "partial_update"):
+        if self.action == "create":
+            return CompanyCreateSerializer
+        if self.action in ("update", "partial_update"):
             return CompanyWriteSerializer
         return CompanySerializer
 
@@ -144,10 +147,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return selectors.get_company(pk=self.kwargs["pk"], user=self.request.user)
 
     def create(self, request: Request, *args, **kwargs) -> Response:
-        serializer = CompanyWriteSerializer(data=request.data)
+        serializer = CompanyCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        company = services.create_company(
+        company = services.create_company_with_optional_opening(
             **serializer.validated_data,
             owner=request.user,
         )

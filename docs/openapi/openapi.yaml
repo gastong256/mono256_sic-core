@@ -501,7 +501,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CompanyWrite'
+              $ref: '#/components/schemas/CompanyCreate'
         required: true
       security:
       - jwtAuth: []
@@ -1709,6 +1709,10 @@ components:
         name:
           type: string
           maxLength: 255
+        description:
+          type: string
+          readOnly: true
+          description: Optional business description for a more realistic simulation.
         tax_id:
           type: string
           description: Simulated CUIT (optional).
@@ -1745,12 +1749,99 @@ components:
       - account_count
       - books_closed_until
       - created_at
+      - description
       - id
       - is_demo
       - is_read_only
       - name
       - owner_username
       - updated_at
+    CompanyCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Company name.
+          maxLength: 255
+        description:
+          type: string
+          default: ''
+          description: Optional business description.
+        tax_id:
+          type: string
+          default: ''
+          description: Simulated CUIT (optional).
+          maxLength: 20
+        opening_entry:
+          allOf:
+          - $ref: '#/components/schemas/CompanyOpeningEntry'
+          description: Optional balanced opening entry to create the company with
+            initial capital/assets.
+      required:
+      - name
+    CompanyOpeningEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: Accounting date of the opening entry.
+        description:
+          type: string
+          description: Glosa / description of the opening entry.
+          maxLength: 500
+        source_type:
+          allOf:
+          - $ref: '#/components/schemas/SourceTypeEnum'
+          default: MANUAL
+        source_ref:
+          type: string
+          default: ''
+          description: Optional reference, e.g. "APERTURA-001".
+          maxLength: 100
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyOpeningLine'
+          description: Opening lines with per-line account creation metadata.
+      required:
+      - date
+      - description
+      - lines
+    CompanyOpeningLine:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Full account code in format X.XX.XX (e.g. 1.01.01).
+          maxLength: 10
+        name:
+          type: string
+          description: Movement-account name to create or reuse for this company.
+          maxLength: 255
+        parent_code:
+          type: string
+          description: Parent colectiva code in format X.XX (e.g. 1.01).
+          maxLength: 4
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          description: |-
+            DEBIT or CREDIT.
+
+            * `DEBIT` - Deudora
+            * `CREDIT` - Acreedora
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          description: Positive amount.
+      required:
+      - amount
+      - code
+      - name
+      - parent_code
+      - type
     CompanySelector:
       type: object
       properties:
@@ -1784,6 +1875,10 @@ components:
           type: string
           description: Company name.
           maxLength: 255
+        description:
+          type: string
+          default: ''
+          description: Optional business description.
         tax_id:
           type: string
           default: ''
@@ -2349,6 +2444,10 @@ components:
           type: string
           description: Company name.
           maxLength: 255
+        description:
+          type: string
+          default: ''
+          description: Optional business description.
         tax_id:
           type: string
           default: ''

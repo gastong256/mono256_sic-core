@@ -337,9 +337,13 @@ Response `200 OK`:
     {
       "id": 1,
       "name": "Ferretería El Clavo",
+      "description": "Comercio minorista de herramientas y materiales",
       "tax_id": "20-12345678-9",
       "owner_username": "student1",
       "account_count": 3,
+      "books_closed_until": null,
+      "is_demo": false,
+      "is_read_only": false,
       "created_at": "2025-01-15T10:30:00Z",
       "updated_at": "2025-01-15T10:30:00Z"
     }
@@ -365,7 +369,9 @@ Example response:
     {
       "id": 12,
       "name": "Mi Empresa Demo",
-      "owner_username": "ana"
+      "owner_username": "ana",
+      "is_demo": false,
+      "is_read_only": false
     }
   ]
 }
@@ -380,11 +386,57 @@ Content-Type: application/json
 
 {
   "name": "Ferretería El Clavo",
+  "description": "Comercio minorista de herramientas y materiales",
   "tax_id": "20-12345678-9"
 }
 ```
 
 Response `201 Created` — same format as list item above.
+
+Optional opening entry in the same request:
+
+```http
+POST /api/v1/companies/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Ferretería El Clavo",
+  "description": "Comercio minorista de herramientas y materiales",
+  "tax_id": "20-12345678-9",
+  "opening_entry": {
+    "date": "2026-03-16",
+    "description": "Aporte inicial de capital",
+    "source_ref": "APERTURA-001",
+    "lines": [
+      {
+        "code": "1.01.01",
+        "name": "Caja Principal",
+        "parent_code": "1.01",
+        "type": "DEBIT",
+        "amount": "500000.00"
+      },
+      {
+        "code": "1.04.01",
+        "name": "Banco Cuenta Corriente",
+        "parent_code": "1.04",
+        "type": "DEBIT",
+        "amount": "1500000.00"
+      },
+      {
+        "code": "3.01.01",
+        "name": "Capital Social",
+        "parent_code": "3.01",
+        "type": "CREDIT",
+        "amount": "2000000.00"
+      }
+    ]
+  }
+}
+```
+
+If `opening_entry` is omitted, company creation keeps the current behavior: the company
+is created with no initial accounts and no opening journal entry.
 
 #### Retrieve company
 
@@ -405,6 +457,7 @@ Content-Type: application/json
 
 {
   "name": "Ferretería El Clavo SRL",
+  "description": "Comercio minorista y ventas online",
   "tax_id": "30-12345678-9"
 }
 ```
