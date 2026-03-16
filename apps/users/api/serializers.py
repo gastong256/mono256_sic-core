@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.core.exceptions import ObjectDoesNotExist
 
+from apps.companies.api.serializers import CompanySelectorSerializer
 from apps.users.models import User
 
 
@@ -63,6 +64,23 @@ class RegistrationCodeInfoSerializer(serializers.Serializer):
     allow_previous_window = serializers.BooleanField()
     valid_from = serializers.DateTimeField()
     valid_until = serializers.DateTimeField()
+
+
+class UserCapabilitiesSerializer(serializers.Serializer):
+    can_manage_courses = serializers.BooleanField()
+    can_manage_visibility = serializers.BooleanField()
+    can_view_registration_code = serializers.BooleanField()
+    can_manage_roles = serializers.BooleanField()
+
+
+class MeResponseSerializer(UserSerializer):
+    companies = CompanySelectorSerializer(many=True, required=False)
+    capabilities = UserCapabilitiesSerializer(required=False)
+    registration_code = RegistrationCodeInfoSerializer(allow_null=True, required=False)
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ["companies", "capabilities", "registration_code"]
+        read_only_fields = fields
 
 
 class UserSelectorSerializer(serializers.ModelSerializer):

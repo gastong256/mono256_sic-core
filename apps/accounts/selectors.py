@@ -1,9 +1,14 @@
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Q
 
 from hordak.models import Account
 
+from apps.common.cache import (
+    safe_cache_add,
+    safe_cache_get,
+    safe_cache_incr,
+    safe_cache_set,
+)
 from apps.accounts.models import TeacherAccountVisibility
 from apps.accounts.visibility import (
     hidden_account_ids_for_student,
@@ -29,25 +34,24 @@ def _company_chart_version_key(company_id: int) -> str:
 
 
 def _get_or_init_version(key: str) -> int:
-    current = cache.get(key)
+    current = safe_cache_get(key)
     if isinstance(current, int) and current > 0:
         return current
-    cache.set(key, 1, timeout=_VERSION_TTL_SECONDS)
+    safe_cache_set(key, 1, timeout=_VERSION_TTL_SECONDS)
     return 1
 
 
 def _bump_version(key: str) -> int:
-    if cache.add(key, 2, timeout=_VERSION_TTL_SECONDS):
+    if safe_cache_add(key, 2, timeout=_VERSION_TTL_SECONDS) is True:
         return 2
-    try:
-        value = cache.incr(key)
-    except ValueError:
-        current = cache.get(key)
+    value = safe_cache_incr(key)
+    if value is None:
+        current = safe_cache_get(key)
         if not isinstance(current, int):
             value = 2
         else:
             value = current + 1
-        cache.set(key, value, timeout=_VERSION_TTL_SECONDS)
+        safe_cache_set(key, value, timeout=_VERSION_TTL_SECONDS)
     return int(value)
 
 
@@ -108,7 +112,7 @@ def _build_node(
 def get_global_chart(*, user: User | None = None) -> list[dict]:
     """Global Angrisani chart: rubros + colectivas, optionally filtered for student visibility."""
     cache_key = _global_chart_cache_key(user=user)
-    cached = cache.get(cache_key)
+    cached = safe_cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -131,14 +135,14 @@ def get_global_chart(*, user: User | None = None) -> list[dict]:
                 roots[acc.parent_id]["children"].append(node)
 
     tree = list(roots.values())
-    cache.set(cache_key, tree, timeout=_cache_timeout())
+    safe_cache_set(cache_key, tree, timeout=_cache_timeout())
     return tree
 
 
 def get_company_chart(*, company: Company, user: User | None = None) -> list[dict]:
     """Global levels + company subcuentas (movement accounts) in one nested tree."""
     cache_key = _company_chart_cache_key(company_id=company.id, user=user)
-    cached = cache.get(cache_key)
+    cached = safe_cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -167,14 +171,14 @@ def get_company_chart(*, company: Company, user: User | None = None) -> list[dic
                 level1[acc.parent_id]["children"].append(node)
 
     tree = list(roots.values())
-    cache.set(cache_key, tree, timeout=_cache_timeout())
+    safe_cache_set(cache_key, tree, timeout=_cache_timeout())
     return tree
 
 
 def get_teacher_visibility_chart(*, teacher: User) -> list[dict]:
     """Return effective show/hide state for levels 0/1 for one teacher scope."""
     cache_key = _teacher_visibility_chart_cache_key(teacher_id=teacher.id)
-    cached = cache.get(cache_key)
+    cached = safe_cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -201,5 +205,5 @@ def get_teacher_visibility_chart(*, teacher: User) -> list[dict]:
                 roots[acc.parent_id]["children"].append(node)
 
     tree = list(roots.values())
-    cache.set(cache_key, tree, timeout=_cache_timeout())
+    safe_cache_set(cache_key, tree, timeout=_cache_timeout())
     return tree

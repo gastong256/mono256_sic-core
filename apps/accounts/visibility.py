@@ -1,6 +1,12 @@
 from django.conf import settings
-from django.core.cache import cache
 
+from apps.common.cache import (
+    safe_cache_add,
+    safe_cache_delete,
+    safe_cache_get,
+    safe_cache_incr,
+    safe_cache_set,
+)
 from apps.accounts.models import TeacherAccountVisibility
 from apps.users.models import User
 
@@ -24,35 +30,34 @@ def _teacher_hidden_ids_cache_key(teacher_id: int, version: int) -> str:
 
 
 def _get_or_init_version(key: str) -> int:
-    current = cache.get(key)
+    current = safe_cache_get(key)
     if isinstance(current, int) and current > 0:
         return current
-    cache.set(key, 1, timeout=_VERSION_TTL_SECONDS)
+    safe_cache_set(key, 1, timeout=_VERSION_TTL_SECONDS)
     return 1
 
 
 def _bump_version(key: str) -> int:
-    if cache.add(key, 2, timeout=_VERSION_TTL_SECONDS):
+    if safe_cache_add(key, 2, timeout=_VERSION_TTL_SECONDS) is True:
         return 2
-    try:
-        value = cache.incr(key)
-    except ValueError:
-        current = cache.get(key)
+    value = safe_cache_incr(key)
+    if value is None:
+        current = safe_cache_get(key)
         if not isinstance(current, int):
             value = 2
         else:
             value = current + 1
-        cache.set(key, value, timeout=_VERSION_TTL_SECONDS)
+        safe_cache_set(key, value, timeout=_VERSION_TTL_SECONDS)
     return int(value)
 
 
 def invalidate_student_teacher_cache(*, student_id: int) -> None:
-    cache.delete(_student_teacher_cache_key(student_id))
+    safe_cache_delete(_student_teacher_cache_key(student_id))
 
 
 def resolve_teacher_id_for_student(*, student: User) -> int | None:
     key = _student_teacher_cache_key(student.id)
-    cached = cache.get(key)
+    cached = safe_cache_get(key)
     if cached is not None:
         return int(cached) if cached else None
 
@@ -63,7 +68,7 @@ def resolve_teacher_id_for_student(*, student: User) -> int | None:
         .values_list("course__teacher_id", flat=True)
         .first()
     )
-    cache.set(key, int(teacher_id) if teacher_id else 0, timeout=_cache_timeout())
+    safe_cache_set(key, int(teacher_id) if teacher_id else 0, timeout=_cache_timeout())
     return int(teacher_id) if teacher_id else None
 
 
@@ -101,7 +106,7 @@ def hidden_account_ids_for_student(*, student: User) -> set[int]:
 
     version = teacher_visibility_version(teacher_id=teacher_id)
     key = _teacher_hidden_ids_cache_key(teacher_id, version)
-    cached = cache.get(key)
+    cached = safe_cache_get(key)
     if cached is not None:
         return set(cached)
 
@@ -111,7 +116,7 @@ def hidden_account_ids_for_student(*, student: User) -> set[int]:
             is_visible=False,
         ).values_list("account_id", flat=True)
     )
-    cache.set(key, hidden_ids, timeout=_cache_timeout())
+    safe_cache_set(key, hidden_ids, timeout=_cache_timeout())
     return set(hidden_ids)
 
 

@@ -139,6 +139,7 @@ class LedgerView(APIView):
         )
         include = parse_include_param(request.query_params.get("include"))
         if "account_options" in include:
+            data = data.copy()
             data["account_options"] = ledger.list_account_options(company=company)
         logger.debug("report_ledger", company_id=company.pk, user=request.user.username)
         return Response(data)

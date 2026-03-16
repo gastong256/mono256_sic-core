@@ -88,10 +88,26 @@ The setup is in `config/otel.py` and is a no-op when disabled — no import erro
 
 ## Health Endpoints
 
-| Endpoint  | Purpose                  | Checks DB |
-|-----------|--------------------------|-----------|
-| `GET /healthz` | Liveness — process alive | No |
-| `GET /readyz`  | Readiness — ready to serve traffic | Yes |
+| Endpoint  | Purpose                  | Checks DB | Checks Redis |
+|-----------|--------------------------|-----------|--------------|
+| `GET /healthz` | Liveness — process alive | No | No |
+| `GET /readyz`  | Readiness — ready to serve traffic | Yes | Yes, when `REDIS_URL` is configured |
+
+`readyz` returns:
+
+```json
+{
+  "status": "ok",
+  "db": true,
+  "redis": true,
+  "fallback": false
+}
+```
+
+Status semantics:
+- `ok`: DB is healthy and Redis is healthy, or Redis is not configured.
+- `degraded`: DB is healthy but Redis is configured and unavailable; the app is serving traffic with fallback behavior.
+- `unavailable`: DB is unavailable.
 
 Use `readyz` in Kubernetes `readinessProbe` and `healthz` in `livenessProbe`.
 
@@ -117,3 +133,8 @@ REDIS_URL=redis://cache-host:6379/0
 ```
 
 Without a shared cache in production, limits may become inconsistent across multiple processes/instances.
+
+If Redis becomes unavailable in production:
+- report/chart/visibility caches degrade to recalculation from the primary data source
+- registration code generation/validation continues because the source of truth is the database
+- temporary anti-abuse counters may degrade and become less strict until Redis is available again

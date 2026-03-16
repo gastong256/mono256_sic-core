@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from apps.companies.models import Company
 from apps.journal.models import JournalEntry, JournalEntryLine
+from apps.reports import cache as report_cache
 
 _ZERO = Decimal("0")
 
@@ -14,6 +15,15 @@ def get_journal_book(
     date_to: datetime.date | None = None,
 ) -> dict:
     """Libro Diario: chronological entries with full lines and per-entry totals."""
+    cached = report_cache.get_cached_report(
+        report_name="journal_book",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if cached is not None:
+        return cached
+
     actual_date_to = date_to or datetime.date.today()
 
     qs = (
@@ -81,7 +91,7 @@ def get_journal_book(
             }
         )
 
-    return {
+    report = {
         "company_id": company.id,
         "company": company.name,
         "date_from": str(actual_date_from),
@@ -94,3 +104,11 @@ def get_journal_book(
             "total_credit": f"{grand_credit:.2f}",
         },
     }
+    report_cache.set_cached_report(
+        report_name="journal_book",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+        value=report,
+    )
+    return report

@@ -8,6 +8,7 @@ from hordak.models import Account
 
 from apps.accounts.visibility import is_hidden_for_student
 from apps.companies.models import Company, CompanyAccount
+from apps.reports.cache import bump_report_cache_version
 from apps.users.models import User
 
 ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
@@ -95,6 +96,7 @@ def create_account(
     from apps.accounts.selectors import bump_company_chart_cache_version
 
     bump_company_chart_cache_version(company_id=company.id)
+    bump_report_cache_version(company_id=company.id)
 
     return account
 
@@ -147,6 +149,7 @@ def update_account(
     from apps.accounts.selectors import bump_company_chart_cache_version
 
     bump_company_chart_cache_version(company_id=company.id)
+    bump_report_cache_version(company_id=company.id)
     return account
 
 
@@ -170,3 +173,4 @@ def delete_account(*, account: Account, company: Company) -> None:
     from apps.accounts.selectors import bump_company_chart_cache_version
 
     bump_company_chart_cache_version(company_id=company.id)
+    bump_report_cache_version(company_id=company.id)

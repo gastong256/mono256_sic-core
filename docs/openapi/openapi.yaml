@@ -187,6 +187,44 @@ paths:
       responses:
         '200':
           description: Updated visibility tree
+  /api/v1/accounts/visibility/batch/:
+    patch:
+      operationId: batch_update_account_visibility_overrides
+      summary: Batch set account visibility overrides
+      tags:
+      - account-visibility
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccountVisibilityBulkUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Updated visibility tree
+  /api/v1/accounts/visibility/bootstrap/:
+    get:
+      operationId: bootstrap_account_visibility_chart
+      summary: Bootstrap account visibility management
+      parameters:
+      - in: query
+        name: teacher_id
+        schema:
+          type: integer
+      tags:
+      - account-visibility
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountVisibilityBootstrap'
+          description: ''
   /api/v1/admin/registration-code/:
     get:
       operationId: admin_get_registration_code
@@ -225,6 +263,11 @@ paths:
       summary: List users
       parameters:
       - in: query
+        name: all
+        schema:
+          type: boolean
+        description: Return the full list in one response.
+      - in: query
         name: page
         schema:
           type: integer
@@ -243,6 +286,13 @@ paths:
         schema:
           type: string
         description: Case-insensitive username search.
+      - in: query
+        name: summary
+        schema:
+          type: string
+          enum:
+          - selector
+        description: Return a lightweight item shape for selectors.
       tags:
       - admin
       security:
@@ -286,6 +336,13 @@ paths:
     get:
       operationId: get_me
       summary: Get current user
+      parameters:
+      - in: query
+        name: include
+        schema:
+          type: string
+        description: 'Comma-separated extra sections to include. Supported values:
+          companies, capabilities, registration_code.'
       tags:
       - auth
       security:
@@ -296,7 +353,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/MeResponse'
           description: ''
     patch:
       operationId: update_me
@@ -377,30 +434,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenRefresh'
+              $ref: '#/components/schemas/StableTokenRefresh'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenRefresh'
+                $ref: '#/components/schemas/StableTokenRefresh'
           description: ''
   /api/v1/companies/:
     get:
       operationId: list_companies
       summary: List companies
       parameters:
+      - in: query
+        name: all
+        schema:
+          type: boolean
+        description: Return the full list in one response.
       - name: ordering
         required: false
         in: query
         description: Which field to use when ordering the results.
         schema:
           type: string
-      - name: page
-        required: false
-        in: query
-        description: A page number within the paginated result set.
+      - in: query
+        name: page
         schema:
           type: integer
       - name: search
@@ -409,6 +469,13 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: summary
+        schema:
+          type: string
+          enum:
+          - selector
+        description: Return a lightweight item shape for selectors.
       tags:
       - companies
       security:
@@ -447,7 +514,7 @@ paths:
   /api/v1/companies/{company_id}/journal/:
     get:
       operationId: list_journal_entries
-      description: Returns all journal entries for the given company ordered by entry
+      description: Returns paginated journal entries for the company ordered by entry
         number.
       summary: List journal entries
       parameters:
@@ -456,6 +523,11 @@ paths:
         schema:
           type: integer
         required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Pagination page number.
       tags:
       - journal
       security:
@@ -466,9 +538,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/JournalEntryList'
+                $ref: '#/components/schemas/JournalEntryListPaginated'
           description: ''
         '401':
           description: Authentication required
@@ -700,6 +770,11 @@ paths:
         schema:
           type: string
         description: End date (YYYY-MM-DD). Defaults to today.
+      - in: query
+        name: include
+        schema:
+          type: string
+        description: 'Optional extra sections. Supported values: account_options.'
       tags:
       - reports
       security:
@@ -953,6 +1028,22 @@ paths:
   /api/v1/courses/:
     get:
       operationId: courses_list
+      parameters:
+      - in: query
+        name: all
+        schema:
+          type: boolean
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: summary
+        schema:
+          type: string
+          enum:
+          - selector
+        description: Return a lightweight item shape for selectors.
       tags:
       - courses
       security:
@@ -963,9 +1054,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Course'
+                $ref: '#/components/schemas/CoursePaginatedResponse'
           description: ''
     post:
       operationId: courses_create
@@ -1060,6 +1149,10 @@ paths:
         schema:
           type: integer
         required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
       tags:
       - courses
       security:
@@ -1070,9 +1163,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Enrollment'
+                $ref: '#/components/schemas/EnrollmentPaginatedResponse'
           description: ''
     post:
       operationId: courses_enrollments_create
@@ -1197,6 +1288,35 @@ paths:
     get:
       operationId: teacher_courses_companies_retrieve
       parameters:
+      - in: query
+        name: all
+        schema:
+          type: boolean
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourseCompaniesPaginatedResponse'
+          description: ''
+  /api/v1/teacher/courses/{course_id}/companies/summary/:
+    get:
+      operationId: teacher_courses_companies_summary_retrieve
+      parameters:
       - in: path
         name: course_id
         schema:
@@ -1218,6 +1338,10 @@ paths:
     get:
       operationId: teacher_courses_journal_entries_retrieve
       parameters:
+      - in: query
+        name: all
+        schema:
+          type: boolean
       - in: query
         name: company_id
         schema:
@@ -1255,6 +1379,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeacherCourseJournalEntriesResponse'
           description: ''
+  /api/v1/teacher/courses/{course_id}/journal-entries/all/:
+    get:
+      operationId: teacher_courses_journal_entries_all_retrieve
+      parameters:
+      - in: query
+        name: company_id
+        schema:
+          type: integer
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+      - in: query
+        name: date_to
+        schema:
+          type: string
+      - in: query
+        name: student_id
+        schema:
+          type: integer
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourseJournalEntriesResponse'
+          description: ''
+  /api/v1/teacher/courses/overview/:
+    get:
+      operationId: teacher_courses_overview_retrieve
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCoursesOverviewResponse'
+          description: ''
   /api/v1/teacher/registration-code/:
     get:
       operationId: teacher_get_registration_code
@@ -1270,6 +1446,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegistrationCodeInfo'
+          description: ''
+  /api/v1/teacher/students/{student_id}/context/:
+    get:
+      operationId: teacher_student_context_retrieve
+      parameters:
+      - in: query
+        name: company_id
+        schema:
+          type: integer
+      - in: query
+        name: entries_limit
+        schema:
+          type: integer
+        description: Maximum number of most recent journal entries to include (max
+          100).
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherStudentContextResponse'
           description: ''
   /api/v1/teacher/students/available/:
     get:
@@ -1315,7 +1522,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StatusResponse'
+                $ref: '#/components/schemas/LivenessResponse'
           description: ''
   /readyz:
     get:
@@ -1332,10 +1539,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StatusResponse'
+                $ref: '#/components/schemas/ReadinessResponse'
           description: ''
         '503':
-          description: Database unavailable
+          description: Required dependencies unavailable
 components:
   schemas:
     AccountCreate:
@@ -1356,6 +1563,37 @@ components:
       - code
       - name
       - parent_id
+    AccountVisibilityBootstrap:
+      type: object
+      properties:
+        selected_teacher_id:
+          type: integer
+          nullable: true
+        teachers:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        chart:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - chart
+      - selected_teacher_id
+      - teachers
+    AccountVisibilityBulkItem:
+      type: object
+      properties:
+        account_id:
+          type: integer
+          minimum: 1
+        is_visible:
+          type: boolean
+      required:
+      - account_id
+      - is_visible
     AvailableStudent:
       type: object
       properties:
@@ -1443,6 +1681,22 @@ components:
       - name
       - owner_username
       - updated_at
+    CompanySelector:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        owner_username:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
+      - owner_username
     CompanyWrite:
       type: object
       properties:
@@ -1496,6 +1750,26 @@ components:
       - teacher_id
       - teacher_username
       - updated_at
+    CoursePaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+      required:
+      - count
+      - next
+      - previous
+      - results
     CourseWrite:
       type: object
       properties:
@@ -1535,6 +1809,26 @@ components:
           minimum: 1
       required:
       - student_id
+    EnrollmentPaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+      required:
+      - count
+      - next
+      - previous
+      - results
     Item:
       type: object
       properties:
@@ -1638,12 +1932,14 @@ components:
           nullable: true
           readOnly: true
         total_debit:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
           readOnly: true
         total_credit:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
           readOnly: true
         lines:
           type: array
@@ -1757,12 +2053,14 @@ components:
           nullable: true
           readOnly: true
         total_debit:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
           readOnly: true
         total_credit:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
           readOnly: true
       required:
       - created_by
@@ -1776,6 +2074,26 @@ components:
       - source_type
       - total_credit
       - total_debit
+    JournalEntryListPaginated:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryList'
+      required:
+      - count
+      - next
+      - previous
+      - results
     JournalEntryReverse:
       type: object
       properties:
@@ -1787,6 +2105,71 @@ components:
           type: string
           description: Optional description for the reversal entry.
           maxLength: 500
+    LivenessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    MeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        role:
+          type: string
+          readOnly: true
+        course_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanySelector'
+        capabilities:
+          $ref: '#/components/schemas/UserCapabilities'
+        registration_code:
+          allOf:
+          - $ref: '#/components/schemas/RegistrationCodeInfo'
+          nullable: true
+      required:
+      - course_id
+      - date_joined
+      - email
+      - first_name
+      - id
+      - is_staff
+      - last_name
+      - role
+      - username
     PaginatedCompanyList:
       type: object
       required:
@@ -1821,6 +2204,16 @@ components:
           type: string
           description: New full account code in format X.XX.XX (e.g. 1.04.02).
           maxLength: 10
+    PatchedAccountVisibilityBulkUpdate:
+      type: object
+      properties:
+        teacher_id:
+          type: integer
+          minimum: 1
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountVisibilityBulkItem'
     PatchedAccountVisibilityUpdate:
       type: object
       properties:
@@ -1870,6 +2263,22 @@ components:
         last_name:
           type: string
           maxLength: 150
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        db:
+          type: boolean
+        redis:
+          type: boolean
+        fallback:
+          type: boolean
+      required:
+      - db
+      - fallback
+      - redis
+      - status
     RegistrationCodeInfo:
       type: object
       properties:
@@ -1913,13 +2322,20 @@ components:
         * `INVOICE` - Factura
         * `RECEIPT` - Recibo
         * `OTHER` - Otro
-    StatusResponse:
+    StableTokenRefresh:
       type: object
+      description: |-
+        Keep refresh response contract stable for clients:
+        always include a `refresh` token in the payload.
       properties:
-        status:
+        refresh:
           type: string
+        access:
+          type: string
+          readOnly: true
       required:
-      - status
+      - access
+      - refresh
     TeacherCompanyItem:
       type: object
       properties:
@@ -1937,6 +2353,32 @@ components:
       - id
       - name
       - tax_id
+    TeacherCourseCompaniesPaginatedResponse:
+      type: object
+      properties:
+        course_id:
+          type: integer
+        course_name:
+          type: string
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherStudentCompanies'
+      required:
+      - count
+      - course_id
+      - course_name
+      - next
+      - previous
+      - students
     TeacherCourseCompaniesResponse:
       type: object
       properties:
@@ -2044,6 +2486,67 @@ components:
       - source_type
       - student_id
       - student_username
+    TeacherCourseOverview:
+      type: object
+      properties:
+        course_id:
+          type: integer
+        course_name:
+          type: string
+        course_code:
+          type: string
+          nullable: true
+        teacher_id:
+          type: integer
+        teacher_username:
+          type: string
+        student_count:
+          type: integer
+        totals:
+          type: object
+          additionalProperties:
+            type: integer
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherDashboardStudentSummary'
+      required:
+      - course_code
+      - course_id
+      - course_name
+      - student_count
+      - students
+      - teacher_id
+      - teacher_username
+      - totals
+    TeacherCoursesOverviewResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherCourseOverview'
+      required:
+      - courses
+    TeacherDashboardStudentSummary:
+      type: object
+      properties:
+        student_id:
+          type: integer
+        student_username:
+          type: string
+        student_full_name:
+          type: string
+        company_count:
+          type: integer
+        journal_entry_count:
+          type: integer
+      required:
+      - company_count
+      - journal_entry_count
+      - student_full_name
+      - student_id
+      - student_username
     TeacherStudentCompanies:
       type: object
       properties:
@@ -2062,6 +2565,91 @@ components:
       - student_full_name
       - student_id
       - student_username
+    TeacherStudentContextCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tax_id:
+          type: string
+        account_count:
+          type: integer
+        journal_entry_count:
+          type: integer
+        last_entry_date:
+          type: string
+          format: date
+          nullable: true
+        books_closed_until:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - account_count
+      - books_closed_until
+      - created_at
+      - id
+      - journal_entry_count
+      - last_entry_date
+      - name
+      - tax_id
+      - updated_at
+    TeacherStudentContextResponse:
+      type: object
+      properties:
+        student:
+          $ref: '#/components/schemas/TeacherStudentContextStudent'
+        companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherStudentContextCompany'
+        selected_company_id:
+          type: integer
+          nullable: true
+        journal_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherCourseJournalEntry'
+      required:
+      - companies
+      - journal_entries
+      - selected_company_id
+      - student
+    TeacherStudentContextStudent:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        full_name:
+          type: string
+        course_id:
+          type: integer
+          nullable: true
+        course_name:
+          type: string
+          nullable: true
+      required:
+      - course_id
+      - course_name
+      - first_name
+      - full_name
+      - id
+      - last_name
+      - username
     TokenObtainPair:
       type: object
       properties:
@@ -2082,18 +2670,6 @@ components:
       - password
       - refresh
       - username
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-          writeOnly: true
-      required:
-      - access
-      - refresh
     TypeEnum:
       enum:
       - DEBIT
@@ -2150,6 +2726,22 @@ components:
       - last_name
       - role
       - username
+    UserCapabilities:
+      type: object
+      properties:
+        can_manage_courses:
+          type: boolean
+        can_manage_visibility:
+          type: boolean
+        can_view_registration_code:
+          type: boolean
+        can_manage_roles:
+          type: boolean
+      required:
+      - can_manage_courses
+      - can_manage_roles
+      - can_manage_visibility
+      - can_view_registration_code
     UserListPaginated:
       type: object
       properties:

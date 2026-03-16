@@ -29,6 +29,7 @@ Recommended:
 - `DB_CONNECT_TIMEOUT=5`
 - `ACCOUNT_CHART_CACHE_TIMEOUT=300`
 - `ACCOUNT_VISIBILITY_CACHE_TIMEOUT=300`
+- `REPORT_CACHE_TIMEOUT=120`
 - `REGISTRATION_CONFIG_CACHE_TIMEOUT=300`
 - `GUNICORN_ACCESS_LOG_PROD=false` (avoid duplicate request logging)
 - `RUN_MIGRATIONS_ON_START=true` (useful for platforms without pre-deploy hooks)
@@ -51,7 +52,10 @@ Recommended:
    ```
 4. Verify readiness:
    - `GET /healthz` returns `200`.
-   - `GET /readyz` returns `200`.
+   - `GET /readyz` returns:
+     - `200` with `"status": "ok"` for fully healthy state
+     - `200` with `"status": "degraded"` when DB is healthy but Redis fallback is active
+     - `503` with `"status": "unavailable"` when DB is unavailable
 5. Verify OpenAPI/docs:
    - `GET /api/docs` loads.
 
@@ -109,6 +113,7 @@ Monitor at least:
 - HTTP 5xx rate.
 - Request latency (`duration_ms`) and `slow_request` events.
 - DB connectivity failures.
+- Redis connectivity failures and prolonged `readyz.status=degraded`.
 - Container restarts/crashes.
 
 Use `request_id` in logs to trace incidents end-to-end.
@@ -146,11 +151,12 @@ Before releasing high-impact changes, run:
    - `request_failed`
    - 5xx spikes
    - DB/Redis connection errors
-3. Identify affected scope:
+3. If `readyz.status=degraded`, prioritize cache/backend dependency recovery while confirming that critical flows still work.
+4. Identify affected scope:
    - single endpoint / single tenant / global.
-4. Mitigate:
+5. Mitigate:
    - rollback app image or disable recent feature via config.
-5. Recover:
+6. Recover:
    - verify readiness and critical user flows.
-6. Postmortem:
+7. Postmortem:
    - document root cause and action items.

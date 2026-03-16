@@ -5,6 +5,7 @@ from django.db.models import Q, Sum
 
 from apps.companies.models import Company
 from apps.journal.models import JournalEntryLine
+from apps.reports import cache as report_cache
 
 _ZERO = Decimal("0")
 
@@ -26,6 +27,15 @@ def get_trial_balance(
     date_to: datetime.date | None = None,
 ) -> dict:
     """Balance de Comprobación: grouped subtotals (colectivas) + movement accounts."""
+    cached = report_cache.get_cached_report(
+        report_name="trial_balance",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if cached is not None:
+        return cached
+
     actual_date_to = date_to or datetime.date.today()
 
     line_filter = Q(
@@ -72,7 +82,7 @@ def get_trial_balance(
         actual_date_from = actual_date_to
 
     if not rows:
-        return {
+        report = {
             "company_id": company.id,
             "company": company.name,
             "date_from": str(actual_date_from),
@@ -87,6 +97,14 @@ def get_trial_balance(
                 "total_credit_balance": "0.00",
             },
         }
+        report_cache.set_cached_report(
+            report_name="trial_balance",
+            company_id=company.id,
+            date_from=date_from,
+            date_to=date_to,
+            value=report,
+        )
+        return report
 
     groups: dict[int, dict] = {}
     grand_debit = _ZERO
@@ -153,7 +171,7 @@ def get_trial_balance(
 
     groups_data.sort(key=lambda g: g["account_code"] or "")
 
-    return {
+    report = {
         "company_id": company.id,
         "company": company.name,
         "date_from": str(actual_date_from),
@@ -168,3 +186,11 @@ def get_trial_balance(
             "total_credit_balance": f"{grand_credit_balance:.2f}",
         },
     }
+    report_cache.set_cached_report(
+        report_name="trial_balance",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+        value=report,
+    )
+    return report

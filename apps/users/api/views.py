@@ -13,6 +13,7 @@ from apps.companies import selectors as company_selectors
 from apps.companies.api.serializers import CompanySelectorSerializer
 from apps.users import services
 from apps.users.api.serializers import (
+    MeResponseSerializer,
     RegistrationCodeInfoSerializer,
     UserListPaginatedSerializer,
     UserRegisterSerializer,
@@ -44,7 +45,7 @@ class MeView(APIView):
                 ),
             )
         ],
-        responses={200: UserSerializer},
+        responses={200: MeResponseSerializer},
         tags=["auth"],
     )
     def get(self, request: Request) -> Response:

@@ -11,6 +11,7 @@ from hordak.models import Transaction as HordakTransaction
 from config.exceptions import ConflictError
 from apps.companies.models import Company, CompanyAccount
 from apps.journal.models import JournalEntry, JournalEntryLine
+from apps.reports.cache import bump_report_cache_version
 
 
 def _assert_books_open(*, company: Company, date: datetime.date) -> None:
@@ -162,6 +163,8 @@ def create_journal_entry(
         ]
     )
 
+    bump_report_cache_version(company_id=company.id)
+
     return entry
 
 
@@ -253,5 +256,7 @@ def reverse_journal_entry(
             for line in reversed_lines
         ]
     )
+
+    bump_report_cache_version(company_id=company.id)
 
     return reversal_entry

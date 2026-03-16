@@ -22,7 +22,10 @@ class TeacherAccountVisibility(models.Model):
     class Meta:
         unique_together = [("teacher", "account")]
         indexes = [
-            models.Index(fields=["teacher", "account"]),
+            models.Index(
+                fields=["teacher", "is_visible", "account"],
+                name="accounts_te_teacher_vis_ac_idx",
+            ),
         ]
 
     def clean(self) -> None:

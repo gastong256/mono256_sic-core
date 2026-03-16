@@ -1,6 +1,7 @@
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from apps.companies.models import Company
 from apps.companies.models import CompanyAccount
@@ -11,6 +12,21 @@ from hordak.models import Account
 
 @pytest.mark.django_db
 class TestReportServiceAliases:
+    def test_journal_book_returns_cached_payload_when_available(self):
+        owner = User.objects.create_user(
+            username="owner-jb-cache", password="x", role=User.Role.STUDENT
+        )
+        company = Company.objects.create(name="ACME JB Cache", owner=owner)
+        cached = {"company_id": company.id, "entries": [], "cached": True}
+
+        with patch(
+            "apps.reports.services.journal_book.report_cache.get_cached_report",
+            return_value=cached,
+        ):
+            report = journal_book.get_journal_book(company=company)
+
+        assert report is cached
+
     def test_journal_book_returns_entries_only(self):
         owner = User.objects.create_user(username="owner-jb", password="x", role=User.Role.STUDENT)
         company = Company.objects.create(name="ACME JB", owner=owner)
@@ -22,6 +38,21 @@ class TestReportServiceAliases:
         assert "results" not in report
         assert report["grand_total_debit"] == report["totals"]["total_debit"]
         assert report["grand_total_credit"] == report["totals"]["total_credit"]
+
+    def test_ledger_returns_cached_payload_when_available(self):
+        owner = User.objects.create_user(
+            username="owner-ledger-cache", password="x", role=User.Role.STUDENT
+        )
+        company = Company.objects.create(name="ACME Ledger Cache", owner=owner)
+        cached = {"company_id": company.id, "accounts": [], "cached": True}
+
+        with patch(
+            "apps.reports.services.ledger.report_cache.get_cached_report",
+            return_value=cached,
+        ):
+            report = ledger.get_ledger(company=company)
+
+        assert report is cached
 
     def test_ledger_returns_accounts_only(self):
         owner = User.objects.create_user(
@@ -35,6 +66,21 @@ class TestReportServiceAliases:
         assert report["account_id"] is None
         assert report["accounts"] == []
         assert "cards" not in report
+
+    def test_trial_balance_returns_cached_payload_when_available(self):
+        owner = User.objects.create_user(
+            username="owner-trial-cache", password="x", role=User.Role.STUDENT
+        )
+        company = Company.objects.create(name="ACME TB Cache", owner=owner)
+        cached = {"company_id": company.id, "groups": [], "cached": True}
+
+        with patch(
+            "apps.reports.services.trial_balance.report_cache.get_cached_report",
+            return_value=cached,
+        ):
+            report = trial_balance.get_trial_balance(company=company)
+
+        assert report is cached
 
     def test_trial_balance_returns_groups_only_and_grand_totals(self):
         owner = User.objects.create_user(

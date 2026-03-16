@@ -9,9 +9,20 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-_status_response = inline_serializer(
-    name="StatusResponse",
+from apps.common.cache import cache_roundtrip_ok
+
+_liveness_response = inline_serializer(
+    name="LivenessResponse",
     fields={"status": serializers.CharField()},
+)
+_readiness_response = inline_serializer(
+    name="ReadinessResponse",
+    fields={
+        "status": serializers.CharField(),
+        "db": serializers.BooleanField(),
+        "redis": serializers.BooleanField(),
+        "fallback": serializers.BooleanField(),
+    },
 )
 logger = structlog.get_logger(__name__)
 
@@ -20,7 +31,7 @@ class LivenessView(APIView):
     @extend_schema(
         operation_id="liveness",
         summary="Liveness probe",
-        responses={200: _status_response},
+        responses={200: _liveness_response},
         tags=["health"],
     )
     def get(self, request: Request) -> Response:
@@ -28,25 +39,61 @@ class LivenessView(APIView):
 
 
 class ReadinessView(APIView):
-    @extend_schema(
-        operation_id="readiness",
-        summary="Readiness probe",
-        responses={
-            200: _status_response,
-            503: OpenApiResponse(description="Database unavailable"),
-        },
-        tags=["health"],
-    )
-    def get(self, request: Request) -> Response:
+    @staticmethod
+    def _check_db() -> bool:
         from django.db import connection
 
         try:
             connection.ensure_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
         except Exception:
-            logger.exception("readiness_check_failed")
-            return Response({"status": "unavailable"}, status=503)
+            logger.exception("readiness_db_check_failed")
+            return False
 
-        return Response({"status": "ok"})
+        return True
+
+    @staticmethod
+    def _check_redis() -> bool:
+        if not settings.REDIS_URL:
+            return False
+
+        return cache_roundtrip_ok(key="__readyz__", value="ok", timeout=5)
+
+    @extend_schema(
+        operation_id="readiness",
+        summary="Readiness probe",
+        responses={
+            200: _readiness_response,
+            503: OpenApiResponse(description="Required dependencies unavailable"),
+        },
+        tags=["health"],
+    )
+    def get(self, request: Request) -> Response:
+        db_ok = self._check_db()
+        redis_ok = self._check_redis()
+        fallback_active = bool(settings.REDIS_URL) and not redis_ok and db_ok
+
+        if not db_ok:
+            status_value = "unavailable"
+            status_code = 503
+        elif fallback_active:
+            status_value = "degraded"
+            status_code = 200
+        else:
+            status_value = "ok"
+            status_code = 200
+
+        return Response(
+            {
+                "status": status_value,
+                "db": db_ok,
+                "redis": redis_ok,
+                "fallback": fallback_active,
+            },
+            status=status_code,
+        )
 
 
 urlpatterns = [

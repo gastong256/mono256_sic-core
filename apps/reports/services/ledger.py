@@ -8,6 +8,7 @@ from hordak.models import Account
 
 from apps.companies.models import Company
 from apps.journal.models import JournalEntryLine
+from apps.reports import cache as report_cache
 
 _ZERO = Decimal("0")
 
@@ -45,6 +46,16 @@ def get_ledger(
     """Libro Mayor (Mayor Americano): opening, movements, and closing balance by account."""
     from rest_framework.exceptions import ValidationError
 
+    cached = report_cache.get_cached_report(
+        report_name="ledger",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+        extra_parts={"account_id": account_id or "all"},
+    )
+    if cached is not None:
+        return cached
+
     actual_date_to = date_to or datetime.date.today()
 
     account_qs = Account.objects.filter(company_account__company=company).order_by("full_code")
@@ -59,7 +70,7 @@ def get_ledger(
     account_map = {a.pk: a for a in accounts}
 
     if not accounts:
-        return {
+        report = {
             "company_id": company.id,
             "company": company.name,
             "date_from": str(date_from or actual_date_to),
@@ -67,6 +78,15 @@ def get_ledger(
             "account_id": account_id,
             "accounts": [],
         }
+        report_cache.set_cached_report(
+            report_name="ledger",
+            company_id=company.id,
+            date_from=date_from,
+            date_to=date_to,
+            extra_parts={"account_id": account_id or "all"},
+            value=report,
+        )
+        return report
 
     opening_balances: dict[int, Decimal] = {pk: _ZERO for pk in account_ids}
     if date_from:
@@ -167,7 +187,7 @@ def get_ledger(
             }
         )
 
-    return {
+    report = {
         "company_id": company.id,
         "company": company.name,
         "date_from": str(actual_date_from),
@@ -175,3 +195,12 @@ def get_ledger(
         "account_id": account_id,
         "accounts": accounts_data,
     }
+    report_cache.set_cached_report(
+        report_name="ledger",
+        company_id=company.id,
+        date_from=date_from,
+        date_to=date_to,
+        extra_parts={"account_id": account_id or "all"},
+        value=report,
+    )
+    return report

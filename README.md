@@ -110,6 +110,7 @@ Required variables:
 | `DJANGO_SETTINGS_MODULE` | `config.settings.local` | Settings file to use |
 | `DJANGO_SECRET_KEY` | `change-me` | Django secret key |
 | `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/sic_core` | PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379/0` | Shared cache backend. Optional in local dev, required in production |
 
 > **Note:** `django-hordak` requires PostgreSQL. SQLite is not supported because
 > hordak uses a PostgreSQL trigger to compute `full_code` on the Account model.
@@ -224,7 +225,58 @@ Response `200 OK`:
 
 ```json
 {
-  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### Current user and bootstrap context
+
+```http
+GET /api/v1/auth/me/
+GET /api/v1/auth/me/?include=companies,capabilities
+GET /api/v1/auth/me/?include=registration_code
+Authorization: Bearer <token>
+```
+
+Supported `include` values:
+- `companies`
+- `capabilities`
+- `registration_code`
+
+Example:
+
+```json
+{
+  "id": 7,
+  "username": "ana",
+  "email": "ana@example.com",
+  "first_name": "Ana",
+  "last_name": "Gomez",
+  "is_staff": false,
+  "role": "teacher",
+  "course_id": null,
+  "date_joined": "2026-03-16T10:00:00Z",
+  "companies": [
+    {
+      "id": 12,
+      "name": "Mi Empresa Demo",
+      "owner_username": "ana"
+    }
+  ],
+  "capabilities": {
+    "can_manage_courses": true,
+    "can_manage_visibility": true,
+    "can_view_registration_code": true,
+    "can_manage_roles": false
+  },
+  "registration_code": {
+    "code": "ABCDE-12345",
+    "window_minutes": 60,
+    "allow_previous_window": true,
+    "valid_from": "2026-03-16T10:00:00Z",
+    "valid_until": "2026-03-16T11:00:00Z"
+  }
 }
 ```
 
@@ -246,11 +298,16 @@ Students act as an accounting firm and can manage multiple companies.
 - `GET/PATCH/DELETE /api/v1/courses/{course_id}/`
 - `POST /api/v1/courses/{course_id}/enrollments/`
 - `DELETE /api/v1/courses/{course_id}/enrollments/{student_id}/`
+- `GET /api/v1/teacher/courses/overview/`
 - `GET /api/v1/teacher/courses/{course_id}/companies/`
+- `GET /api/v1/teacher/courses/{course_id}/companies/summary/`
 - `GET /api/v1/teacher/courses/{course_id}/journal-entries/`
+- `GET /api/v1/teacher/courses/{course_id}/journal-entries/all/`
+- `GET /api/v1/teacher/students/{student_id}/context/`
 
 ### Admin Role Management
 
+- `GET /api/v1/admin/users/`
 - `PATCH /api/v1/admin/users/{user_id}/role/`
 
 Body:
@@ -268,7 +325,8 @@ GET /api/v1/companies/
 Authorization: Bearer <token>
 ```
 
-Students see only their own companies. Teachers see all.
+Students see only their own companies. Teachers see their own companies plus
+companies owned by students enrolled in their courses. Admins see all companies.
 
 Response `200 OK`:
 
@@ -284,6 +342,30 @@ Response `200 OK`:
       "account_count": 3,
       "created_at": "2025-01-15T10:30:00Z",
       "updated_at": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+Selector-friendly variant:
+
+```http
+GET /api/v1/companies/?all=true&summary=selector
+Authorization: Bearer <token>
+```
+
+Example response:
+
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 12,
+      "name": "Mi Empresa Demo",
+      "owner_username": "ana"
     }
   ]
 }
@@ -406,6 +488,51 @@ Authorization: Bearer <token>
 
 Response `200 OK` — same tree format, with level-2 `children` populated per company.
 
+For students, this tree is already filtered by teacher visibility overrides.
+Most frontends do not need an extra visibility request just to render the chart.
+
+#### Account visibility bootstrap
+
+```http
+GET /api/v1/accounts/visibility/bootstrap/?teacher_id=2
+Authorization: Bearer <admin_token>
+```
+
+Teachers can omit `teacher_id`. Admins can use it to preload a selected teacher
+along with the chart.
+
+Example response:
+
+```json
+{
+  "selected_teacher_id": 2,
+  "teachers": [
+    {
+      "id": 2,
+      "username": "profe1",
+      "first_name": "Ada",
+      "last_name": "Lovelace",
+      "full_name": "Ada Lovelace",
+      "role": "teacher"
+    }
+  ],
+  "chart": [
+    {
+      "id": 1,
+      "code": "1",
+      "name": "ACTIVO",
+      "type": "AS",
+      "level": 0,
+      "is_leaf": false,
+      "is_visible": true,
+      "children": []
+    }
+  ]
+}
+```
+
+Bulk updates are available via `PATCH /api/v1/accounts/visibility/batch/`.
+
 #### Create level-3 account
 
 ```http
@@ -487,6 +614,52 @@ Error `409 Conflict` — if the account has existing transaction legs in hordak:
 
 ---
 
+### Reports
+
+- `GET /api/v1/companies/{company_id}/reports/journal-book/`
+- `GET /api/v1/companies/{company_id}/reports/ledger/`
+- `GET /api/v1/companies/{company_id}/reports/trial-balance/`
+- `GET /api/v1/companies/{company_id}/reports/*.xlsx`
+
+Canonical response keys:
+- `journal-book` returns `entries`
+- `ledger` returns `accounts`
+- `trial-balance` returns `groups`
+
+The old aliases `results`, `cards`, and `rows` are no longer part of the report
+contract.
+
+Ledger also supports an optional selector helper:
+
+```http
+GET /api/v1/companies/12/reports/ledger/?account_id=42&include=account_options
+Authorization: Bearer <token>
+```
+
+Which adds:
+
+```json
+{
+  "account_options": [
+    {
+      "id": 42,
+      "code": "1.01.01",
+      "name": "Caja Principal"
+    }
+  ]
+}
+```
+
+Teacher dashboard and student detail helpers:
+- `GET /api/v1/teacher/courses/overview/`
+- `GET /api/v1/teacher/students/{student_id}/context/`
+
+Selector-friendly variants are also available on:
+- `GET /api/v1/courses/?all=true&summary=selector`
+- `GET /api/v1/admin/users/?role=teacher&all=true&summary=selector`
+
+---
+
 ## Project Structure
 
 ```
@@ -564,7 +737,7 @@ Optional bootstrap:
 - **Logs:** JSON to stdout (structlog). Every record includes `request_id` and `tenant_id`.
 - **HTTP access logs:** request method/path/status/duration with `slow_request` threshold alerts.
 - **Request ID:** `X-Request-ID` header, auto-generated if missing, echoed in response.
-- **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness + DB check).
+- **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness with DB + Redis state and fallback signal).
 
 ## Operations Runbook
 

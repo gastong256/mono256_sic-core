@@ -6,10 +6,16 @@ from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
-from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 
+from apps.common.cache import (
+    safe_cache_add,
+    safe_cache_delete,
+    safe_cache_get,
+    safe_cache_incr,
+    safe_cache_set,
+)
 from apps.users.models import RegistrationCodeConfig, User
 
 REGISTER_IP_LIMIT = 5
@@ -74,7 +80,7 @@ def _registration_config() -> RegistrationCodeConfig:
     )
     config.full_clean()
     config.save()
-    cache.delete(_REGISTRATION_CONFIG_CACHE_KEY)
+    safe_cache_delete(_REGISTRATION_CONFIG_CACHE_KEY)
     return config
 
 
@@ -83,7 +89,7 @@ def _registration_config_cache_timeout() -> int:
 
 
 def _registration_config_values() -> dict[str, object]:
-    cached = cache.get(_REGISTRATION_CONFIG_CACHE_KEY)
+    cached = safe_cache_get(_REGISTRATION_CONFIG_CACHE_KEY)
     if isinstance(cached, dict):
         return cached
 
@@ -93,7 +99,11 @@ def _registration_config_values() -> dict[str, object]:
         "window_minutes": config.window_minutes,
         "allow_previous_window": config.allow_previous_window,
     }
-    cache.set(_REGISTRATION_CONFIG_CACHE_KEY, values, timeout=_registration_config_cache_timeout())
+    safe_cache_set(
+        _REGISTRATION_CONFIG_CACHE_KEY,
+        values,
+        timeout=_registration_config_cache_timeout(),
+    )
     return values
 
 
@@ -139,7 +149,7 @@ def rotate_registration_code() -> dict:
     config.salt = secrets.token_urlsafe(32)
     config.full_clean()
     config.save(update_fields=["salt", "updated_at"])
-    cache.delete(_REGISTRATION_CONFIG_CACHE_KEY)
+    safe_cache_delete(_REGISTRATION_CONFIG_CACHE_KEY)
     return get_current_registration_code_info()
 
 
@@ -167,24 +177,32 @@ def validate_registration_code(*, submitted_code: str, at_epoch: int | None = No
     return normalized in valid_codes
 
 
-def _incr_counter(*, key: str, timeout: int) -> int:
-    if cache.add(key, 0, timeout=timeout):
-        try:
-            return int(cache.incr(key))
-        except ValueError:
-            cache.set(key, 1, timeout=timeout)
+def _incr_counter(*, key: str, timeout: int) -> int | None:
+    added = safe_cache_add(key, 0, timeout=timeout)
+    if added is None:
+        return None
+    if added is True:
+        value = safe_cache_incr(key)
+        if value is not None:
+            return value
+        if safe_cache_set(key, 1, timeout=timeout):
             return 1
+        return None
 
-    try:
-        return int(cache.incr(key))
-    except ValueError:
-        current = cache.get(key)
-        if isinstance(current, int):
-            next_value = current + 1
-        else:
-            next_value = 1
-        cache.set(key, next_value, timeout=timeout)
+    value = safe_cache_incr(key)
+    if value is not None:
+        return value
+
+    current = safe_cache_get(key)
+    if current is None:
+        if safe_cache_set(key, 1, timeout=timeout):
+            return 1
+        return None
+
+    next_value = current + 1 if isinstance(current, int) else 1
+    if safe_cache_set(key, next_value, timeout=timeout):
         return next_value
+    return None
 
 
 def _consume_window_attempt(
@@ -194,6 +212,8 @@ def _consume_window_attempt(
     window_index = now_ts // window_seconds
     counter_key = f"{key}:{window_index}"
     attempts = _incr_counter(key=counter_key, timeout=window_seconds + 1)
+    if attempts is None:
+        return None
     if attempts > limit:
         retry_after = window_seconds - (now_ts % window_seconds)
         return max(retry_after, 1)
@@ -216,7 +236,7 @@ def check_registration_limits(
     now_dt = now or datetime.now(timezone.utc)
     keys = _registration_keys(ip=ip, username=username)
 
-    blocked_until_epoch = cache.get(keys["blocked_until"])
+    blocked_until_epoch = safe_cache_get(keys["blocked_until"])
     if blocked_until_epoch:
         retry_after = int(blocked_until_epoch - int(now_dt.timestamp()))
         if retry_after > 0:
@@ -248,6 +268,8 @@ def register_failure(*, ip: str, username: str | None, now: datetime | None = No
     now_dt = now or datetime.now(timezone.utc)
     keys = _registration_keys(ip=ip, username=username)
     fail_count = _incr_counter(key=keys["fail_count"], timeout=FAILURE_COUNTER_TTL)
+    if fail_count is None:
+        return None
 
     cooldown = None
     for threshold, cooldown_seconds in COOLDOWN_STEPS:
@@ -256,14 +278,15 @@ def register_failure(*, ip: str, username: str | None, now: datetime | None = No
 
     if cooldown:
         blocked_until = int((now_dt + timedelta(seconds=cooldown)).timestamp())
-        cache.set(keys["blocked_until"], blocked_until, timeout=cooldown)
+        if not safe_cache_set(keys["blocked_until"], blocked_until, timeout=cooldown):
+            return None
     return cooldown
 
 
 def register_success(*, ip: str, username: str | None) -> None:
     keys = _registration_keys(ip=ip, username=username)
-    cache.delete(keys["fail_count"])
-    cache.delete(keys["blocked_until"])
+    safe_cache_delete(keys["fail_count"])
+    safe_cache_delete(keys["blocked_until"])
 
 
 def register_student_user(
