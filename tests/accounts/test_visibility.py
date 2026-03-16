@@ -1,11 +1,14 @@
 import pytest
+from unittest.mock import patch
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from hordak.models import Account
 
 from apps.accounts.models import TeacherAccountVisibility
-from apps.accounts.selectors import get_global_chart
+from apps.accounts.selectors import get_company_chart, get_global_chart
+from apps.companies.models import Company
 from apps.courses.services import create_course, enroll_student
 from apps.users.models import User
 
@@ -51,3 +54,35 @@ class TestAccountVisibility:
         assert payload["selected_teacher_id"] == teacher.id
         assert payload["teachers"][0]["id"] == teacher.id
         assert payload["chart"][0]["children"][0]["is_visible"] is False
+
+    @override_settings(DEMO_COMPANY_CHART_CACHE_TIMEOUT=777)
+    def test_demo_company_chart_uses_demo_cache_timeout(self):
+        owner = User.objects.create_user(
+            username="demo-chart-owner",
+            password="x",
+            role=User.Role.ADMIN,
+        )
+        demo_company = Company.objects.create(
+            name="Empresa Demo Cache",
+            owner=owner,
+            is_demo=True,
+            is_read_only=True,
+        )
+        root = Account.objects.create(code="1", name="ACTIVO", type="AS", currencies=["ARS"])
+        parent = Account.objects.create(
+            code=".01",
+            name="Caja",
+            parent=root,
+            type="AS",
+            currencies=["ARS"],
+        )
+
+        with (
+            patch("apps.accounts.selectors.safe_cache_get", return_value=None),
+            patch("apps.accounts.selectors.safe_cache_set") as mock_set,
+        ):
+            tree = get_company_chart(company=demo_company, user=owner)
+
+        assert tree[0]["id"] == root.id
+        assert tree[0]["children"][0]["id"] == parent.id
+        assert mock_set.call_args.kwargs["timeout"] == 777

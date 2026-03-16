@@ -39,6 +39,17 @@ class TestReportServiceAliases:
         assert report["grand_total_debit"] == report["totals"]["total_debit"]
         assert report["grand_total_credit"] == report["totals"]["total_credit"]
 
+    def test_journal_book_marks_demo_reports_for_demo_cache(self):
+        owner = User.objects.create_user(
+            username="owner-jb-demo", password="x", role=User.Role.ADMIN
+        )
+        company = Company.objects.create(name="ACME JB Demo", owner=owner, is_demo=True)
+
+        with patch("apps.reports.services.journal_book.report_cache.set_cached_report") as mock_set:
+            journal_book.get_journal_book(company=company)
+
+        assert mock_set.call_args.kwargs["is_demo"] is True
+
     def test_ledger_returns_cached_payload_when_available(self):
         owner = User.objects.create_user(
             username="owner-ledger-cache", password="x", role=User.Role.STUDENT
@@ -66,6 +77,17 @@ class TestReportServiceAliases:
         assert report["account_id"] is None
         assert report["accounts"] == []
         assert "cards" not in report
+
+    def test_ledger_marks_demo_reports_for_demo_cache(self):
+        owner = User.objects.create_user(
+            username="owner-ledger-demo", password="x", role=User.Role.ADMIN
+        )
+        company = Company.objects.create(name="ACME Ledger Demo", owner=owner, is_demo=True)
+
+        with patch("apps.reports.services.ledger.report_cache.set_cached_report") as mock_set:
+            ledger.get_ledger(company=company)
+
+        assert mock_set.call_args.kwargs["is_demo"] is True
 
     def test_trial_balance_returns_cached_payload_when_available(self):
         owner = User.objects.create_user(
@@ -95,6 +117,19 @@ class TestReportServiceAliases:
         assert "rows" not in report
         assert report["grand_total_debit"] == report["totals"]["total_debit"]
         assert report["grand_total_credit"] == report["totals"]["total_credit"]
+
+    def test_trial_balance_marks_demo_reports_for_demo_cache(self):
+        owner = User.objects.create_user(
+            username="owner-trial-demo", password="x", role=User.Role.ADMIN
+        )
+        company = Company.objects.create(name="ACME TB Demo", owner=owner, is_demo=True)
+
+        with patch(
+            "apps.reports.services.trial_balance.report_cache.set_cached_report"
+        ) as mock_set:
+            trial_balance.get_trial_balance(company=company)
+
+        assert mock_set.call_args.kwargs["is_demo"] is True
 
     def test_ledger_can_include_account_options(self, api_client: APIClient):
         owner = User.objects.create_user(

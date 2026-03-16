@@ -77,6 +77,8 @@ paths:
           description: Created account node
         '400':
           description: Validation error
+        '409':
+          description: Read-only demo company
         '401':
           description: Authentication required
         '403':
@@ -114,6 +116,8 @@ paths:
           description: Updated account node
         '400':
           description: Validation error
+        '409':
+          description: Read-only demo company
         '401':
           description: Authentication required
         '403':
@@ -578,7 +582,7 @@ paths:
         '400':
           description: Validation or business rule error
         '409':
-          description: Closed period or concurrent conflict
+          description: Closed period, read-only demo company, or concurrent conflict
         '401':
           description: Authentication required
         '403':
@@ -662,7 +666,7 @@ paths:
         '404':
           description: Company or entry not found
         '409':
-          description: Already reversed or closed period
+          description: Already reversed, closed period, or read-only demo company
   /api/v1/companies/{company_id}/reports/journal-book/:
     get:
       operationId: get_journal_book
@@ -972,6 +976,8 @@ paths:
           description: Validation error
         '403':
           description: Permission denied
+        '409':
+          description: Read-only demo company
     patch:
       operationId: partial_update_company
       summary: Partially update a company
@@ -1003,6 +1009,8 @@ paths:
           description: Validation error
         '403':
           description: Permission denied
+        '409':
+          description: Read-only demo company
     delete:
       operationId: delete_company
       summary: Delete a company
@@ -1140,6 +1148,58 @@ paths:
       responses:
         '204':
           description: No content
+  /api/v1/courses/{course_id}/demo-companies/:
+    get:
+      operationId: courses_demo_companies_list
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDemoCompanyVisibilityList'
+          description: ''
+  /api/v1/courses/{course_id}/demo-companies/{company_id}/:
+    patch:
+      operationId: courses_demo_companies_partial_update
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseDemoCompanyVisibilityUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDemoCompanyVisibility'
+          description: ''
   /api/v1/courses/{course_id}/enrollments/:
     get:
       operationId: courses_enrollments_list
@@ -1665,6 +1725,14 @@ components:
           readOnly: true
           nullable: true
           description: Entries on or before this date are locked.
+        is_demo:
+          type: boolean
+          readOnly: true
+          description: Marks a seeded demo company shared across the system.
+        is_read_only:
+          type: boolean
+          readOnly: true
+          description: If true, accounting writes and metadata updates are blocked.
         created_at:
           type: string
           format: date-time
@@ -1678,6 +1746,8 @@ components:
       - books_closed_until
       - created_at
       - id
+      - is_demo
+      - is_read_only
       - name
       - owner_username
       - updated_at
@@ -1693,8 +1763,18 @@ components:
         owner_username:
           type: string
           readOnly: true
+        is_demo:
+          type: boolean
+          readOnly: true
+          description: Marks a seeded demo company shared across the system.
+        is_read_only:
+          type: boolean
+          readOnly: true
+          description: If true, accounting writes and metadata updates are blocked.
       required:
       - id
+      - is_demo
+      - is_read_only
       - name
       - owner_username
     CompanyWrite:
@@ -1750,6 +1830,46 @@ components:
       - teacher_id
       - teacher_username
       - updated_at
+    CourseDemoCompanyVisibility:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company_name:
+          type: string
+        is_demo:
+          type: boolean
+        is_read_only:
+          type: boolean
+        is_visible:
+          type: boolean
+        account_count:
+          type: integer
+        journal_entry_count:
+          type: integer
+      required:
+      - account_count
+      - company_id
+      - company_name
+      - is_demo
+      - is_read_only
+      - is_visible
+      - journal_entry_count
+    CourseDemoCompanyVisibilityList:
+      type: object
+      properties:
+        course_id:
+          type: integer
+        course_name:
+          type: string
+        demo_companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseDemoCompanyVisibility'
+      required:
+      - course_id
+      - course_name
+      - demo_companies
     CoursePaginatedResponse:
       type: object
       properties:
@@ -2234,6 +2354,11 @@ components:
           default: ''
           description: Simulated CUIT (optional).
           maxLength: 20
+    PatchedCourseDemoCompanyVisibilityUpdate:
+      type: object
+      properties:
+        is_visible:
+          type: boolean
     PatchedCourseWrite:
       type: object
       properties:

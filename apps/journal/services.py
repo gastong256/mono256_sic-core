@@ -10,6 +10,7 @@ from hordak.models import Transaction as HordakTransaction
 
 from config.exceptions import ConflictError
 from apps.companies.models import Company, CompanyAccount
+from apps.companies.services import assert_company_writable
 from apps.journal.models import JournalEntry, JournalEntryLine
 from apps.reports.cache import bump_report_cache_version
 
@@ -116,6 +117,7 @@ def create_journal_entry(
     lines: list[dict],
 ) -> JournalEntry:
     """Create and post an immutable asiento (Hordak transaction + legs + mirror lines)."""
+    assert_company_writable(company=company)
     _assert_books_open(company=company, date=date)
     accounts = _validate_lines(lines, company)
     next_number = _next_entry_number(company)
@@ -178,6 +180,7 @@ def reverse_journal_entry(
     description: str = "",
 ) -> JournalEntry:
     """Create contra-entry by swapping debit/credit on every original line."""
+    assert_company_writable(company=company)
     if original_entry.company_id != company.pk:
         raise ValidationError("Asiento contable no encontrado.")
 

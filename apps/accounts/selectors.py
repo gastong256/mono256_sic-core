@@ -25,6 +25,10 @@ def _cache_timeout() -> int:
     return int(getattr(settings, "ACCOUNT_CHART_CACHE_TIMEOUT", 300))
 
 
+def _demo_company_cache_timeout() -> int:
+    return int(getattr(settings, "DEMO_COMPANY_CHART_CACHE_TIMEOUT", 900))
+
+
 def _global_chart_version_key() -> str:
     return "accounts:chart:global:version"
 
@@ -171,7 +175,11 @@ def get_company_chart(*, company: Company, user: User | None = None) -> list[dic
                 level1[acc.parent_id]["children"].append(node)
 
     tree = list(roots.values())
-    safe_cache_set(cache_key, tree, timeout=_cache_timeout())
+    safe_cache_set(
+        cache_key,
+        tree,
+        timeout=_demo_company_cache_timeout() if company.is_demo else _cache_timeout(),
+    )
     return tree
 
 

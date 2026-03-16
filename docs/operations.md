@@ -6,6 +6,7 @@ This document defines the minimum operational procedures for running SIC in prod
 
 - A PostgreSQL instance reachable by `DATABASE_URL`.
 - A Redis instance reachable by `REDIS_URL`.
+- Production currently uses Upstash Redis for the shared cache (`sic-core-redis`).
 - Environment variables loaded from a secret store (never from committed files).
 - `DJANGO_SETTINGS_MODULE=config.settings.prod`.
 
@@ -17,6 +18,7 @@ At minimum:
 - `DJANGO_ALLOWED_HOSTS`
 - `DATABASE_URL`
 - `REDIS_URL`
+- For Upstash, use the TLS URL provided by the service, typically `rediss://default:PASSWORD@ENDPOINT:PORT`
 - `CSRF_TRUSTED_ORIGINS`
 
 Recommended:
@@ -56,6 +58,7 @@ Recommended:
      - `200` with `"status": "ok"` for fully healthy state
      - `200` with `"status": "degraded"` when DB is healthy but Redis fallback is active
      - `503` with `"status": "unavailable"` when DB is unavailable
+   - When moving or rotating Redis infrastructure, verify `GET /readyz` reports `"redis": true`
 5. Verify OpenAPI/docs:
    - `GET /api/docs` loads.
 

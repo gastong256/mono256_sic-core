@@ -4,7 +4,7 @@ from django.db.models import Count, Max, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.companies.models import Company
-from apps.courses.models import Course, CourseEnrollment
+from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
 from apps.journal.models import JournalEntry
 from apps.users.models import User
 
@@ -167,3 +167,35 @@ def get_teacher_student_context(*, user: User, student_id: int) -> dict:
             for company in companies
         ],
     }
+
+
+def list_course_demo_companies(*, course: Course) -> list[dict]:
+    demo_companies = list(
+        Company.objects.filter(is_demo=True)
+        .select_related("owner")
+        .annotate(
+            account_count=Count("accounts", distinct=True),
+            journal_entry_count=Count("journal_entries", distinct=True),
+        )
+        .order_by("name")
+    )
+    visibility_by_company_id = {
+        row["company_id"]: row["is_visible"]
+        for row in CourseDemoCompanyVisibility.objects.filter(course=course).values(
+            "company_id",
+            "is_visible",
+        )
+    }
+
+    return [
+        {
+            "company_id": company.id,
+            "company_name": company.name,
+            "is_demo": company.is_demo,
+            "is_read_only": company.is_read_only,
+            "is_visible": bool(visibility_by_company_id.get(company.id, False)),
+            "account_count": int(getattr(company, "account_count", 0)),
+            "journal_entry_count": int(getattr(company, "journal_entry_count", 0)),
+        }
+        for company in demo_companies
+    ]

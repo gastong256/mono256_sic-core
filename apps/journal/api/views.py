@@ -65,7 +65,9 @@ class JournalEntryListCreateView(APIView):
         responses={
             201: JournalEntryDetailSerializer,
             400: OpenApiResponse(description="Validation or business rule error"),
-            409: OpenApiResponse(description="Closed period or concurrent conflict"),
+            409: OpenApiResponse(
+                description="Closed period, read-only demo company, or concurrent conflict"
+            ),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -131,7 +133,9 @@ class JournalEntryReverseView(APIView):
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company or entry not found"),
-            409: OpenApiResponse(description="Already reversed or closed period"),
+            409: OpenApiResponse(
+                description="Already reversed, closed period, or read-only demo company"
+            ),
         },
         tags=["journal"],
     )

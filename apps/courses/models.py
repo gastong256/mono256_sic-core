@@ -46,3 +46,33 @@ class CourseEnrollment(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.student.username} -> {self.course}"
+
+
+class CourseDemoCompanyVisibility(TimeStampedModel):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="demo_company_visibilities",
+    )
+    company = models.ForeignKey(
+        "companies.Company",
+        on_delete=models.CASCADE,
+        related_name="course_demo_visibilities",
+    )
+    is_visible = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["course__name", "company__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["course", "company"],
+                name="course_demo_company_unique",
+            )
+        ]
+
+    def clean(self) -> None:
+        if not self.company.is_demo:
+            raise ValidationError({"company": "Only demo companies can be configured per course."})
+
+    def __str__(self) -> str:
+        return f"{self.course} -> {self.company} ({'visible' if self.is_visible else 'hidden'})"

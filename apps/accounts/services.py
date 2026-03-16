@@ -8,6 +8,7 @@ from hordak.models import Account
 
 from apps.accounts.visibility import is_hidden_for_student
 from apps.companies.models import Company, CompanyAccount
+from apps.companies.services import assert_company_writable
 from apps.reports.cache import bump_report_cache_version
 from apps.users.models import User
 
@@ -63,6 +64,7 @@ def create_account(
     - rubros/colectivas are global (levels 0/1)
     - subcuentas are company-specific (level=2 in Hordak MPTT)
     """
+    assert_company_writable(company=company)
     _validate_code_format(code)
     try:
         parent = Account.objects.get(pk=parent_id)
@@ -113,6 +115,7 @@ def update_account(
     """Update only movement accounts (level=2 leaf) linked to the given company."""
     from rest_framework.exceptions import PermissionDenied
 
+    assert_company_writable(company=company)
     if not CompanyAccount.objects.filter(account=account, company=company).exists():
         raise PermissionDenied("This account does not belong to your company.")
 
@@ -158,6 +161,7 @@ def delete_account(*, account: Account, company: Company) -> None:
     """Delete subcuenta only if it has no posted legs (double-entry integrity)."""
     from rest_framework.exceptions import PermissionDenied
 
+    assert_company_writable(company=company)
     try:
         company_account = CompanyAccount.objects.get(account=account, company=company)
     except CompanyAccount.DoesNotExist:
@@ -165,7 +169,7 @@ def delete_account(*, account: Account, company: Company) -> None:
 
     if account.legs.exists():
         raise ConflictError(
-            "Cannot delete account with existing transactions. " "Reverse the transactions first."
+            "Cannot delete account with existing transactions. Reverse the transactions first."
         )
 
     company_account.delete()

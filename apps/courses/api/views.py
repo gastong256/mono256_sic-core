@@ -19,6 +19,9 @@ from apps.courses import selectors, services
 from apps.courses.api.serializers import (
     AvailableStudentsPaginatedResponseSerializer,
     AvailableStudentSerializer,
+    CourseDemoCompanyVisibilityListSerializer,
+    CourseDemoCompanyVisibilitySerializer,
+    CourseDemoCompanyVisibilityUpdateSerializer,
     CourseSelectorSerializer,
     CourseSerializer,
     CoursePaginatedResponseSerializer,
@@ -565,4 +568,61 @@ class TeacherStudentContextView(APIView):
 
         payload["selected_company_id"] = selected_company_id
         payload["journal_entries"] = entries_data
+        return Response(payload)
+
+
+class CourseDemoCompanyVisibilityListView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="courses_demo_companies_list",
+        tags=["courses"],
+        responses={200: CourseDemoCompanyVisibilityListSerializer},
+    )
+    def get(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        payload = {
+            "course_id": course.id,
+            "course_name": course.name,
+            "demo_companies": selectors.list_course_demo_companies(course=course),
+        }
+        return Response(payload)
+
+
+class CourseDemoCompanyVisibilityDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="courses_demo_companies_partial_update",
+        tags=["courses"],
+        request=CourseDemoCompanyVisibilityUpdateSerializer,
+        responses={200: CourseDemoCompanyVisibilitySerializer},
+    )
+    def patch(self, request: Request, course_id: int, company_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        try:
+            company = Company.objects.get(pk=company_id, is_demo=True)
+        except Company.DoesNotExist as exc:
+            raise NotFound("Demo company not found.") from exc
+
+        serializer = CourseDemoCompanyVisibilityUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        services.set_demo_company_visibility(
+            course=course,
+            company=company,
+            is_visible=serializer.validated_data["is_visible"],
+        )
+        payload = next(
+            item
+            for item in selectors.list_course_demo_companies(course=course)
+            if item["company_id"] == company.id
+        )
+        logger.info(
+            "course_demo_company_visibility_updated",
+            actor_id=request.user.pk,
+            course_id=course.id,
+            company_id=company.id,
+            is_visible=payload["is_visible"],
+        )
         return Response(payload)

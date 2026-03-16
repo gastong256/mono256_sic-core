@@ -216,6 +216,26 @@ class TeacherStudentContextResponseSerializer(serializers.Serializer):
     journal_entries = TeacherCourseJournalEntrySerializer(many=True)
 
 
+class CourseDemoCompanyVisibilitySerializer(serializers.Serializer):
+    company_id = serializers.IntegerField()
+    company_name = serializers.CharField()
+    is_demo = serializers.BooleanField()
+    is_read_only = serializers.BooleanField()
+    is_visible = serializers.BooleanField()
+    account_count = serializers.IntegerField()
+    journal_entry_count = serializers.IntegerField()
+
+
+class CourseDemoCompanyVisibilityListSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()
+    course_name = serializers.CharField()
+    demo_companies = CourseDemoCompanyVisibilitySerializer(many=True)
+
+
+class CourseDemoCompanyVisibilityUpdateSerializer(serializers.Serializer):
+    is_visible = serializers.BooleanField()
+
+
 class AvailableStudentsPaginatedResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     next = serializers.CharField(allow_null=True)

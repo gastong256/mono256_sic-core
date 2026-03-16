@@ -1,7 +1,8 @@
 from rest_framework.exceptions import ValidationError
 
 from apps.accounts.visibility import invalidate_student_teacher_cache
-from apps.courses.models import Course, CourseEnrollment
+from apps.companies.models import Company
+from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
 from apps.users.models import User
 
 
@@ -56,3 +57,23 @@ def unenroll_student(*, course: Course, student: User) -> None:
     if deleted == 0:
         raise ValidationError({"student_id": "Student is not enrolled in this course."})
     invalidate_student_teacher_cache(student_id=student.id)
+
+
+def set_demo_company_visibility(
+    *,
+    course: Course,
+    company: Company,
+    is_visible: bool,
+) -> CourseDemoCompanyVisibility:
+    if not company.is_demo:
+        raise ValidationError({"company_id": "Only demo companies can be configured."})
+
+    visibility, _ = CourseDemoCompanyVisibility.objects.get_or_create(
+        course=course,
+        company=company,
+        defaults={"is_visible": is_visible},
+    )
+    visibility.is_visible = is_visible
+    visibility.full_clean()
+    visibility.save(update_fields=["is_visible", "updated_at"])
+    return visibility

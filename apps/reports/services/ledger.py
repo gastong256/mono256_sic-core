@@ -85,6 +85,7 @@ def get_ledger(
             date_to=date_to,
             extra_parts={"account_id": account_id or "all"},
             value=report,
+            is_demo=company.is_demo,
         )
         return report
 
@@ -202,5 +203,6 @@ def get_ledger(
         date_to=date_to,
         extra_parts={"account_id": account_id or "all"},
         value=report,
+        is_demo=company.is_demo,
     )
     return report

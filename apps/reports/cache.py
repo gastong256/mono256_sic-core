@@ -7,7 +7,9 @@ from apps.common.cache import safe_cache_add, safe_cache_get, safe_cache_incr, s
 _VERSION_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
-def _cache_timeout() -> int:
+def _cache_timeout(*, is_demo: bool = False) -> int:
+    if is_demo:
+        return int(getattr(settings, "DEMO_REPORT_CACHE_TIMEOUT", 600))
     return int(getattr(settings, "REPORT_CACHE_TIMEOUT", 120))
 
 
@@ -105,6 +107,7 @@ def set_cached_report(
     date_from: datetime.date | None,
     date_to: datetime.date | None,
     value,
+    is_demo: bool = False,
     extra_parts: dict[str, object] | None = None,
 ) -> None:
     key = build_report_cache_key(
@@ -114,4 +117,4 @@ def set_cached_report(
         date_to=date_to,
         extra_parts=extra_parts,
     )
-    safe_cache_set(key, value, timeout=_cache_timeout())
+    safe_cache_set(key, value, timeout=_cache_timeout(is_demo=is_demo))

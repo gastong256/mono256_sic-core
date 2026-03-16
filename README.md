@@ -110,7 +110,7 @@ Required variables:
 | `DJANGO_SETTINGS_MODULE` | `config.settings.local` | Settings file to use |
 | `DJANGO_SECRET_KEY` | `change-me` | Django secret key |
 | `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/sic_core` | PostgreSQL connection string |
-| `REDIS_URL` | `redis://localhost:6379/0` | Shared cache backend. Optional in local dev, required in production |
+| `REDIS_URL` | `redis://localhost:6379/0` | Shared cache backend. Optional in local dev, required in production. Upstash production URLs usually use `rediss://...` (TLS) |
 
 > **Note:** `django-hordak` requires PostgreSQL. SQLite is not supported because
 > hordak uses a PostgreSQL trigger to compute `full_code` on the Account model.

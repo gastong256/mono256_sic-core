@@ -26,6 +26,17 @@ class Company(TimeStampedModel):
         verbose_name="books closed until",
         help_text="Entries on or before this date are locked.",
     )
+    is_demo = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="is demo",
+        help_text="Marks a seeded demo company shared across the system.",
+    )
+    is_read_only = models.BooleanField(
+        default=False,
+        verbose_name="is read only",
+        help_text="If true, accounting writes and metadata updates are blocked.",
+    )
 
     class Meta:
         verbose_name = "company"

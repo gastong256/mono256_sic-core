@@ -129,8 +129,11 @@ Registration anti-abuse controls (rate limits and cooldowns) use Django cache.
 - **Production**: configure a shared Redis cache via `REDIS_URL`
 
 ```env
-REDIS_URL=redis://cache-host:6379/0
+REDIS_URL=rediss://default:PASSWORD@ENDPOINT:PORT
 ```
+
+Upstash TLS URLs work with the current Django cache backend and require no code
+change beyond updating `REDIS_URL`.
 
 Without a shared cache in production, limits may become inconsistent across multiple processes/instances.
 

@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.companies.models import Company
-from apps.courses.models import Course, CourseEnrollment
+from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
 from apps.users.models import User
 
 
@@ -130,3 +130,51 @@ class TestTeacherCourseAggregatedEndpoints:
         assert payload["selected_company_id"] == company.id
         assert payload["companies"][0]["journal_entry_count"] == 0
         assert payload["journal_entries"] == []
+
+    def test_course_demo_company_visibility_can_be_listed_and_updated(
+        self,
+        api_client: APIClient,
+    ):
+        teacher = User.objects.create_user(
+            username="teacher-demo-visibility",
+            password="x",
+            role=User.Role.TEACHER,
+        )
+        course = Course.objects.create(name="Curso Demo Visibility", teacher=teacher)
+        demo_owner = User.objects.create_user(
+            username="demo-owner-course",
+            password="x",
+            role=User.Role.ADMIN,
+        )
+        demo_company = Company.objects.create(
+            name="Empresa Demo Curso",
+            owner=demo_owner,
+            is_demo=True,
+            is_read_only=True,
+        )
+
+        api_client.force_authenticate(teacher)
+        list_response = api_client.get(f"/api/v1/courses/{course.id}/demo-companies/")
+
+        assert list_response.status_code == status.HTTP_200_OK
+        payload = list_response.json()
+        assert payload["course_id"] == course.id
+        assert payload["demo_companies"][0]["company_id"] == demo_company.id
+        assert payload["demo_companies"][0]["is_visible"] is False
+
+        patch_response = api_client.patch(
+            f"/api/v1/courses/{course.id}/demo-companies/{demo_company.id}/",
+            {"is_visible": True},
+            format="json",
+        )
+
+        assert patch_response.status_code == status.HTTP_200_OK
+        assert patch_response.json()["company_id"] == demo_company.id
+        assert patch_response.json()["is_visible"] is True
+        assert (
+            CourseDemoCompanyVisibility.objects.get(
+                course=course,
+                company=demo_company,
+            ).is_visible
+            is True
+        )

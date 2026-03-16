@@ -16,6 +16,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "owner_username",
             "account_count",
             "books_closed_until",
+            "is_demo",
+            "is_read_only",
             "created_at",
             "updated_at",
         ]
@@ -24,6 +26,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "owner_username",
             "account_count",
             "books_closed_until",
+            "is_demo",
+            "is_read_only",
             "created_at",
             "updated_at",
         ]
@@ -50,7 +54,7 @@ class CompanySelectorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ["id", "name", "owner_username"]
+        fields = ["id", "name", "owner_username", "is_demo", "is_read_only"]
         read_only_fields = fields
 
 

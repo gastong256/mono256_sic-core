@@ -103,6 +103,7 @@ def get_trial_balance(
             date_from=date_from,
             date_to=date_to,
             value=report,
+            is_demo=company.is_demo,
         )
         return report
 
@@ -192,5 +193,6 @@ def get_trial_balance(
         date_from=date_from,
         date_to=date_to,
         value=report,
+        is_demo=company.is_demo,
     )
     return report

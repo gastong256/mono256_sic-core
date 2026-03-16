@@ -5,6 +5,28 @@ from apps.companies.models import Company
 from apps.users.models import User
 
 
+def _visible_demo_company_ids_for_student(*, student: User) -> list[int]:
+    from apps.courses.models import CourseDemoCompanyVisibility, CourseEnrollment
+
+    course_id = (
+        CourseEnrollment.objects.filter(student=student).values_list("course_id", flat=True).first()
+    )
+    if course_id is None:
+        return []
+
+    return list(
+        CourseDemoCompanyVisibility.objects.filter(
+            course_id=course_id,
+            company__is_demo=True,
+            is_visible=True,
+        ).values_list("company_id", flat=True)
+    )
+
+
+def _student_can_access_demo_company(*, student: User, company: Company) -> bool:
+    return company.id in _visible_demo_company_ids_for_student(student=student)
+
+
 def list_companies(*, user) -> QuerySet[Company]:
     base_qs = Company.objects.select_related("owner").annotate(account_count=Count("accounts"))
 
@@ -15,9 +37,13 @@ def list_companies(*, user) -> QuerySet[Company]:
         from apps.courses.selectors import student_ids_for_teacher
 
         enrolled_ids = student_ids_for_teacher(teacher=user)
-        return base_qs.filter(Q(owner=user) | Q(owner_id__in=enrolled_ids))
+        return base_qs.filter(Q(is_demo=True) | Q(owner=user) | Q(owner_id__in=enrolled_ids))
 
-    return base_qs.filter(owner=user)
+    demo_ids = _visible_demo_company_ids_for_student(student=user)
+    student_filter = Q(owner=user, is_demo=False)
+    if demo_ids:
+        student_filter |= Q(is_demo=True, id__in=demo_ids)
+    return base_qs.filter(student_filter)
 
 
 def get_company(*, pk: int, user) -> Company:
@@ -28,6 +54,16 @@ def get_company(*, pk: int, user) -> Company:
 
     if user.role == User.Role.ADMIN:
         return company
+
+    if company.is_demo:
+        if user.role == User.Role.TEACHER:
+            return company
+        if user.role == User.Role.STUDENT and _student_can_access_demo_company(
+            student=user,
+            company=company,
+        ):
+            return company
+        raise PermissionDenied(detail="You do not have permission to access this company.")
 
     if user.role == User.Role.STUDENT and company.owner_id != user.id:
         raise PermissionDenied(detail="You do not have permission to access this company.")

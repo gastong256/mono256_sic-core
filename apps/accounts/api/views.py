@@ -82,6 +82,7 @@ class CompanyAccountListCreateView(APIView):
         responses={
             201: OpenApiResponse(description="Created account node"),
             400: OpenApiResponse(description="Validation error"),
+            409: OpenApiResponse(description="Read-only demo company"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company or parent not found"),
@@ -142,6 +143,7 @@ class CompanyAccountDetailView(APIView):
         responses={
             200: OpenApiResponse(description="Updated account node"),
             400: OpenApiResponse(description="Validation error"),
+            409: OpenApiResponse(description="Read-only demo company"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company or account not found"),
