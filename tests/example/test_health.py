@@ -45,4 +45,9 @@ class TestReadinessEndpoint:
             response = api_client.get("/readyz")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == {"status": "degraded", "db": True, "redis": False, "fallback": True}
+        assert response.json() == {
+            "status": "degraded",
+            "db": True,
+            "redis": False,
+            "fallback": True,
+        }
