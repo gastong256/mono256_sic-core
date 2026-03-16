@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.6.0 (2026-03-16)
+
+### Features
+
+- Add read-only demo company support with course visibility and caching
+  ([`a4b5a8d`](https://github.com/gastong256/mono256_sic-core/commit/a4b5a8d287f4256c7c4f3ec2f2969b2a04b1f28b))
+
+
 ## v0.5.1 (2026-03-16)
 
 ### Bug Fixes
