@@ -535,7 +535,11 @@ class TeacherStudentContextView(APIView):
                 raise ValidationError({"company_id": "company_id must be an integer."}) from exc
 
             company_match = next(
-                (company for company in payload["companies"] if company["id"] == selected_company_id),
+                (
+                    company
+                    for company in payload["companies"]
+                    if company["id"] == selected_company_id
+                ),
                 None,
             )
             if company_match is None:
@@ -545,7 +549,9 @@ class TeacherStudentContextView(APIView):
             try:
                 entries_limit = int(entries_limit_raw) if entries_limit_raw else 25
             except (TypeError, ValueError) as exc:
-                raise ValidationError({"entries_limit": "entries_limit must be an integer."}) from exc
+                raise ValidationError(
+                    {"entries_limit": "entries_limit must be an integer."}
+                ) from exc
             if entries_limit < 1 or entries_limit > 100:
                 raise ValidationError({"entries_limit": "entries_limit must be between 1 and 100."})
 

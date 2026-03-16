@@ -264,7 +264,9 @@ class TeacherAccountVisibilityBootstrapView(APIView):
                     selected_id = int(teacher_id_raw)
                 except (TypeError, ValueError) as exc:
                     raise ValidationError({"teacher_id": "teacher_id must be an integer."}) from exc
-                selected_teacher = next((teacher for teacher in teachers if teacher.id == selected_id), None)
+                selected_teacher = next(
+                    (teacher for teacher in teachers if teacher.id == selected_id), None
+                )
                 if selected_teacher is None:
                     raise ValidationError({"teacher_id": "Teacher not found."})
             elif teachers:

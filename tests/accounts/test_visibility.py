@@ -38,7 +38,9 @@ class TestAccountVisibility:
         teacher = User.objects.create_user(
             username="teacher-bootstrap", password="x", role=User.Role.TEACHER
         )
-        admin = User.objects.create_user(username="admin-bootstrap", password="x", role=User.Role.ADMIN)
+        admin = User.objects.create_user(
+            username="admin-bootstrap", password="x", role=User.Role.ADMIN
+        )
         TeacherAccountVisibility.objects.create(teacher=teacher, account=child, is_visible=False)
 
         api_client.force_authenticate(admin)

@@ -29,7 +29,9 @@ def list_account_options(*, company: Company) -> list[dict]:
             "code": account.full_code,
             "name": account.name,
         }
-        for account in Account.objects.filter(company_account__company=company).order_by("full_code")
+        for account in Account.objects.filter(company_account__company=company).order_by(
+            "full_code"
+        )
     ]
 
 

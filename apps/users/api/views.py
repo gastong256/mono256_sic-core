@@ -221,7 +221,11 @@ class UserListView(APIView):
         if search:
             qs = qs.filter(username__icontains=search)
 
-        serializer_class = UserSelectorSerializer if request.query_params.get("summary") == "selector" else UserSerializer
+        serializer_class = (
+            UserSelectorSerializer
+            if request.query_params.get("summary") == "selector"
+            else UserSerializer
+        )
         if is_truthy_param(request.query_params.get("all")):
             data = serializer_class(qs, many=True).data
             return Response(
