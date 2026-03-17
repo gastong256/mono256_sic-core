@@ -1,10 +1,14 @@
+import datetime
+
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from apps.companies import services as company_services
 from apps.companies.models import Company
 from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
 from apps.users.models import User
+from tests.support.opening import seed_opening_chart
 
 
 @pytest.mark.django_db
@@ -54,7 +58,21 @@ class TestTeacherCourseAggregatedEndpoints:
         )
         course = Course.objects.create(name="Curso API", teacher=teacher)
         CourseEnrollment.objects.create(course=course, student=student)
-        Company.objects.create(name="Empresa Uno", owner=student)
+        parents = seed_opening_chart()
+        company_services.create_company_with_optional_opening(
+            name="Empresa Uno",
+            owner=student,
+            opening_entry={
+                "date": datetime.date(2026, 3, 16),
+                "assets": [
+                    {
+                        "name": "Caja Principal",
+                        "parent_code": parents["cash"].full_code,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+        )
 
         api_client.force_authenticate(teacher)
         response = api_client.get(f"/api/v1/teacher/courses/{course.id}/companies/summary/")
@@ -65,6 +83,9 @@ class TestTeacherCourseAggregatedEndpoints:
         assert len(payload["students"]) == 1
         assert payload["students"][0]["student_id"] == student.id
         assert len(payload["students"][0]["companies"]) == 1
+        assert payload["students"][0]["companies"][0]["has_opening_entry"] is True
+        assert payload["students"][0]["companies"][0]["accounting_ready"] is True
+        assert payload["students"][0]["companies"][0]["opening_entry_id"] is not None
 
     def test_courses_overview_returns_aggregated_student_counts(self, api_client: APIClient):
         teacher = User.objects.create_user(
@@ -117,7 +138,21 @@ class TestTeacherCourseAggregatedEndpoints:
         )
         course = Course.objects.create(name="Curso Context", teacher=teacher)
         CourseEnrollment.objects.create(course=course, student=student)
-        company = Company.objects.create(name="Empresa Context", owner=student)
+        parents = seed_opening_chart()
+        company = company_services.create_company_with_optional_opening(
+            name="Empresa Context",
+            owner=student,
+            opening_entry={
+                "date": datetime.date(2026, 3, 16),
+                "assets": [
+                    {
+                        "name": "Caja Principal",
+                        "parent_code": parents["cash"].full_code,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+        )
 
         api_client.force_authenticate(teacher)
         response = api_client.get(
@@ -128,8 +163,12 @@ class TestTeacherCourseAggregatedEndpoints:
         payload = response.json()
         assert payload["student"]["id"] == student.id
         assert payload["selected_company_id"] == company.id
-        assert payload["companies"][0]["journal_entry_count"] == 0
-        assert payload["journal_entries"] == []
+        assert payload["companies"][0]["journal_entry_count"] == 1
+        assert payload["companies"][0]["has_opening_entry"] is True
+        assert payload["companies"][0]["accounting_ready"] is True
+        assert payload["companies"][0]["opening_entry_id"] is not None
+        assert len(payload["journal_entries"]) == 1
+        assert payload["journal_entries"][0]["source_type"] == "OPENING"
 
     def test_course_demo_company_visibility_can_be_listed_and_updated(
         self,

@@ -1,7 +1,7 @@
 import structlog
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.exceptions import NotFound, Throttled
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -90,7 +90,7 @@ class MeView(APIView):
 
 
 class RegisterView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
     throttle_scope = "auth_register"
 
     @extend_schema(

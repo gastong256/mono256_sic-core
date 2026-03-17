@@ -371,7 +371,9 @@ Example response:
       "name": "Mi Empresa Demo",
       "owner_username": "ana",
       "is_demo": false,
-      "is_read_only": false
+      "is_read_only": false,
+      "has_opening_entry": true,
+      "accounting_ready": true
     }
   ]
 }
@@ -406,29 +408,18 @@ Content-Type: application/json
   "tax_id": "20-12345678-9",
   "opening_entry": {
     "date": "2026-03-16",
-    "description": "Aporte inicial de capital",
+    "inventory_kind": "INITIAL",
     "source_ref": "APERTURA-001",
-    "lines": [
+    "assets": [
       {
-        "code": "1.01.01",
         "name": "Caja Principal",
         "parent_code": "1.01",
-        "type": "DEBIT",
         "amount": "500000.00"
       },
       {
-        "code": "1.04.01",
         "name": "Banco Cuenta Corriente",
         "parent_code": "1.04",
-        "type": "DEBIT",
         "amount": "1500000.00"
-      },
-      {
-        "code": "3.01.01",
-        "name": "Capital Social",
-        "parent_code": "3.01",
-        "type": "CREDIT",
-        "amount": "2000000.00"
       }
     ]
   }
@@ -436,7 +427,51 @@ Content-Type: application/json
 ```
 
 If `opening_entry` is omitted, company creation keeps the current behavior: the company
-is created with no initial accounts and no opening journal entry.
+is created with no initial accounts and no opening journal entry. In that case the
+company exists administratively, but it is not yet `accounting_ready`.
+
+When `opening_entry` is provided:
+- `assets` are posted to `Debe`
+- optional `liabilities` are posted to `Haber`
+- `Capital` is calculated automatically by the backend as `assets - liabilities`
+- the generated description is normalized to:
+  - `s/ Inventario Inicial` when `inventory_kind=INITIAL`
+  - `s/ Inventario General` when `inventory_kind=GENERAL`
+
+Until a company has an opening entry:
+- regular journal entries are rejected
+- journal queries are rejected
+- reports and exports are rejected with `409 Conflict`
+
+You can also open an existing company later:
+
+```http
+POST /api/v1/companies/{id}/opening-entry/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "date": "2026-03-16",
+  "inventory_kind": "GENERAL",
+  "source_ref": "INV-GRAL-001",
+  "assets": [
+    {
+      "name": "Caja Principal",
+      "parent_code": "1.01",
+      "amount": "500000.00"
+    }
+  ],
+  "liabilities": [
+    {
+      "name": "Proveedor Inicial",
+      "parent_code": "2.01",
+      "amount": "100000.00"
+    }
+  ]
+}
+```
+
+The opening entry is unique per company and must be the first accounting entry.
 
 #### Retrieve company
 
@@ -445,7 +480,11 @@ GET /api/v1/companies/{id}/
 Authorization: Bearer <token>
 ```
 
-Response `200 OK` — same format as list item.
+Response `200 OK` includes:
+- `description`
+- `has_opening_entry`
+- `accounting_ready`
+- `opening_entry_id`
 
 #### Update company
 

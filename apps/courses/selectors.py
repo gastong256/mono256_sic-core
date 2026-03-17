@@ -3,6 +3,7 @@ from collections import defaultdict
 from django.db.models import Count, Max, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
+from apps.companies.opening import with_accounting_state
 from apps.companies.models import Company
 from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
 from apps.journal.models import JournalEntry
@@ -133,7 +134,7 @@ def get_teacher_student_context(*, user: User, student_id: int) -> dict:
     get_course(pk=enrollment.course_id, user=user)
 
     companies = list(
-        Company.objects.filter(owner_id=student_id)
+        with_accounting_state(Company.objects.filter(owner_id=student_id))
         .select_related("owner")
         .annotate(
             account_count=Count("accounts", distinct=True),
@@ -160,6 +161,9 @@ def get_teacher_student_context(*, user: User, student_id: int) -> dict:
                 "account_count": int(getattr(company, "account_count", 0)),
                 "journal_entry_count": int(getattr(company, "journal_entry_count", 0)),
                 "last_entry_date": getattr(company, "last_entry_date", None),
+                "has_opening_entry": bool(getattr(company, "has_opening_entry", False)),
+                "accounting_ready": bool(getattr(company, "has_opening_entry", False)),
+                "opening_entry_id": getattr(company, "opening_entry_id", None),
                 "books_closed_until": company.books_closed_until,
                 "created_at": company.created_at,
                 "updated_at": company.updated_at,

@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -15,10 +16,12 @@ from apps.common.query_params import is_truthy_param
 from apps.companies import selectors, services
 from apps.companies.api.serializers import (
     CompanyCreateSerializer,
+    CompanyOpeningEntrySerializer,
     CompanySelectorSerializer,
     CompanySerializer,
     CompanyWriteSerializer,
 )
+from apps.journal.api.serializers import JournalEntryDetailSerializer
 
 logger = structlog.get_logger(__name__)
 
@@ -173,3 +176,42 @@ class CompanyViewSet(viewsets.ModelViewSet):
         services.delete_company(company=company)
         logger.info("company_deleted", company_id=kwargs["pk"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        operation_id="create_company_opening_entry",
+        summary="Create the opening entry for an existing company",
+        request=CompanyOpeningEntrySerializer,
+        responses={
+            201: JournalEntryDetailSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Company not found"),
+            409: OpenApiResponse(
+                description="Company already opened, already has entries, or is read-only"
+            ),
+        },
+        tags=["companies"],
+    )
+    @action(detail=True, methods=["post"], url_path="opening-entry")
+    def opening_entry(self, request: Request, pk: str | None = None) -> Response:
+        company = self.get_object()
+        serializer = CompanyOpeningEntrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        entry = services.create_company_opening_entry(
+            company=company,
+            actor=request.user,
+            opening_entry=serializer.validated_data,
+        )
+        logger.info(
+            "company_opening_entry_created",
+            company_id=company.pk,
+            entry_id=entry.pk,
+            user=request.user.username,
+        )
+        from apps.journal import selectors as journal_selectors
+
+        entry_with_lines = journal_selectors.get_journal_entry(pk=entry.pk, company=company)
+        return Response(
+            JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED
+        )

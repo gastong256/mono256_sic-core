@@ -14,6 +14,7 @@ from apps.common.pagination import paginate_queryset
 from apps.common.permissions import IsTeacherOrAdminRole
 from apps.common.query_params import is_truthy_param
 from apps.common.role_resolution import resolve_teacher_for_actor
+from apps.companies.opening import with_accounting_state
 from apps.companies.models import Company
 from apps.courses import selectors, services
 from apps.courses.api.serializers import (
@@ -259,6 +260,9 @@ class TeacherCourseCompaniesView(APIView):
                     "id": company.id,
                     "name": company.name,
                     "tax_id": company.tax_id,
+                    "has_opening_entry": bool(getattr(company, "has_opening_entry", False)),
+                    "accounting_ready": bool(getattr(company, "has_opening_entry", False)),
+                    "opening_entry_id": getattr(company, "opening_entry_id", None),
                     "created_at": company.created_at,
                 }
             )
@@ -295,7 +299,7 @@ class TeacherCourseCompaniesView(APIView):
             enrollments = list(enrollments_qs)
             student_ids = [e.student_id for e in enrollments]
             companies = list(
-                Company.objects.filter(owner_id__in=student_ids)
+                with_accounting_state(Company.objects.filter(owner_id__in=student_ids))
                 .select_related("owner")
                 .order_by("owner__username", "name")
             )
@@ -325,7 +329,7 @@ class TeacherCourseCompaniesView(APIView):
         page_enrollments = list(page)
         student_ids = [e.student_id for e in page_enrollments]
         companies = list(
-            Company.objects.filter(owner_id__in=student_ids)
+            with_accounting_state(Company.objects.filter(owner_id__in=student_ids))
             .select_related("owner")
             .order_by("owner__username", "name")
         )

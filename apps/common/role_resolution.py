@@ -15,10 +15,9 @@ def resolve_teacher_for_actor(
     if actor.role == User.Role.ADMIN:
         if not teacher_id:
             raise ValidationError({"teacher_id": missing_teacher_id_message})
-        try:
-            teacher = User.objects.get(pk=teacher_id)
-        except User.DoesNotExist as exc:
-            raise ValidationError({"teacher_id": "Teacher not found."}) from exc
+        teacher = User.objects.filter(pk=teacher_id).first()
+        if teacher is None:
+            raise ValidationError({"teacher_id": "Teacher not found."})
         if teacher.role != User.Role.TEACHER:
             raise ValidationError({"teacher_id": "Selected user is not a teacher."})
         return teacher

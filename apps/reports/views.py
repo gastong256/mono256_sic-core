@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.companies.opening import assert_company_accounting_ready
 from apps.companies import selectors as company_selectors
 from apps.common.query_params import parse_include_param
 from apps.reports.exports import (
@@ -67,6 +68,7 @@ class JournalBookView(APIView):
         responses={
             200: OpenApiResponse(description="Libro Diario report"),
             400: OpenApiResponse(description="Invalid query parameters"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -75,6 +77,7 @@ class JournalBookView(APIView):
     )
     def get(self, request: Request, company_id: int) -> Response:
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
 
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -119,6 +122,7 @@ class LedgerView(APIView):
         responses={
             200: OpenApiResponse(description="Libro Mayor report"),
             400: OpenApiResponse(description="Invalid query parameters or account_id"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -127,6 +131,7 @@ class LedgerView(APIView):
     )
     def get(self, request: Request, company_id: int) -> Response:
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
 
         params = LedgerParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -160,6 +165,7 @@ class TrialBalanceView(APIView):
         responses={
             200: OpenApiResponse(description="Balance de Comprobación report"),
             400: OpenApiResponse(description="Invalid query parameters"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -168,6 +174,7 @@ class TrialBalanceView(APIView):
     )
     def get(self, request: Request, company_id: int) -> Response:
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
 
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
@@ -191,6 +198,7 @@ class JournalBookExcelExportView(APIView):
         responses={
             200: OpenApiResponse(description="XLSX file", response=OpenApiTypes.BINARY),
             400: OpenApiResponse(description="Invalid query parameters"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -200,6 +208,7 @@ class JournalBookExcelExportView(APIView):
     def get(self, request: Request, company_id: int) -> Response:
         _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
 
@@ -235,6 +244,7 @@ class LedgerExcelExportView(APIView):
         responses={
             200: OpenApiResponse(description="XLSX file", response=OpenApiTypes.BINARY),
             400: OpenApiResponse(description="Invalid query parameters or account_id"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -244,6 +254,7 @@ class LedgerExcelExportView(APIView):
     def get(self, request: Request, company_id: int) -> Response:
         _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
         params = LedgerParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
 
@@ -269,6 +280,7 @@ class TrialBalanceExcelExportView(APIView):
         responses={
             200: OpenApiResponse(description="XLSX file", response=OpenApiTypes.BINARY),
             400: OpenApiResponse(description="Invalid query parameters"),
+            409: OpenApiResponse(description="Company must be opened before reports are available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -278,6 +290,7 @@ class TrialBalanceExcelExportView(APIView):
     def get(self, request: Request, company_id: int) -> Response:
         _ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
         params = ReportParamsSerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
 

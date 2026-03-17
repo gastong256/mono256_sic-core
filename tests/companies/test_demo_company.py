@@ -57,6 +57,8 @@ class TestDemoCompanyAccessAndReadOnly:
                 "owner_username": demo_owner.username,
                 "is_demo": True,
                 "is_read_only": True,
+                "has_opening_entry": False,
+                "accounting_ready": False,
             }
         ]
 

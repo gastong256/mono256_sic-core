@@ -544,6 +544,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/JournalEntryListPaginated'
           description: ''
+        '409':
+          description: Company must be opened before journal is available
         '401':
           description: Authentication required
         '403':
@@ -582,7 +584,8 @@ paths:
         '400':
           description: Validation or business rule error
         '409':
-          description: Closed period, read-only demo company, or concurrent conflict
+          description: Company not opened, closed period, read-only demo company,
+            or concurrent conflict
         '401':
           description: Authentication required
         '403':
@@ -617,6 +620,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/JournalEntryDetail'
           description: ''
+        '409':
+          description: Company must be opened before journal is available
         '401':
           description: Authentication required
         '403':
@@ -666,7 +671,8 @@ paths:
         '404':
           description: Company or entry not found
         '409':
-          description: Already reversed, closed period, or read-only demo company
+          description: Company not opened, already reversed, closed period, or read-only
+            demo company
   /api/v1/companies/{company_id}/reports/journal-book/:
     get:
       operationId: get_journal_book
@@ -699,6 +705,8 @@ paths:
           description: Libro Diario report
         '400':
           description: Invalid query parameters
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -740,6 +748,8 @@ paths:
           description: XLSX file
         '400':
           description: Invalid query parameters
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -789,6 +799,8 @@ paths:
           description: Libro Mayor report
         '400':
           description: Invalid query parameters or account_id
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -835,6 +847,8 @@ paths:
           description: XLSX file
         '400':
           description: Invalid query parameters or account_id
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -874,6 +888,8 @@ paths:
           description: Balance de Comprobación report
         '400':
           description: Invalid query parameters
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -915,6 +931,8 @@ paths:
           description: XLSX file
         '400':
           description: Invalid query parameters
+        '409':
+          description: Company must be opened before reports are available
         '401':
           description: Authentication required
         '403':
@@ -1033,6 +1051,43 @@ paths:
           description: Permission denied
         '409':
           description: Company has protected accounting records
+  /api/v1/companies/{id}/opening-entry/:
+    post:
+      operationId: create_company_opening_entry
+      summary: Create the opening entry for an existing company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyOpeningEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryDetail'
+          description: ''
+        '400':
+          description: Validation error
+        '403':
+          description: Permission denied
+        '404':
+          description: Company not found
+        '409':
+          description: Company already opened, already has entries, or is read-only
   /api/v1/courses/:
     get:
       operationId: courses_list
@@ -1711,7 +1766,6 @@ components:
           maxLength: 255
         description:
           type: string
-          readOnly: true
           description: Optional business description for a more realistic simulation.
         tax_id:
           type: string
@@ -1737,6 +1791,16 @@ components:
           type: boolean
           readOnly: true
           description: If true, accounting writes and metadata updates are blocked.
+        has_opening_entry:
+          type: boolean
+          readOnly: true
+        accounting_ready:
+          type: boolean
+          readOnly: true
+        opening_entry_id:
+          type: integer
+          nullable: true
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -1747,13 +1811,15 @@ components:
           readOnly: true
       required:
       - account_count
+      - accounting_ready
       - books_closed_until
       - created_at
-      - description
+      - has_opening_entry
       - id
       - is_demo
       - is_read_only
       - name
+      - opening_entry_id
       - owner_username
       - updated_at
     CompanyCreate:
@@ -1779,42 +1845,9 @@ components:
             initial capital/assets.
       required:
       - name
-    CompanyOpeningEntry:
+    CompanyOpeningAccountItem:
       type: object
       properties:
-        date:
-          type: string
-          format: date
-          description: Accounting date of the opening entry.
-        description:
-          type: string
-          description: Glosa / description of the opening entry.
-          maxLength: 500
-        source_type:
-          allOf:
-          - $ref: '#/components/schemas/SourceTypeEnum'
-          default: MANUAL
-        source_ref:
-          type: string
-          default: ''
-          description: Optional reference, e.g. "APERTURA-001".
-          maxLength: 100
-        lines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CompanyOpeningLine'
-          description: Opening lines with per-line account creation metadata.
-      required:
-      - date
-      - description
-      - lines
-    CompanyOpeningLine:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Full account code in format X.XX.XX (e.g. 1.01.01).
-          maxLength: 10
         name:
           type: string
           description: Movement-account name to create or reuse for this company.
@@ -1823,14 +1856,6 @@ components:
           type: string
           description: Parent colectiva code in format X.XX (e.g. 1.01).
           maxLength: 4
-        type:
-          allOf:
-          - $ref: '#/components/schemas/TypeEnum'
-          description: |-
-            DEBIT or CREDIT.
-
-            * `DEBIT` - Deudora
-            * `CREDIT` - Acreedora
         amount:
           type: string
           format: decimal
@@ -1838,10 +1863,42 @@ components:
           description: Positive amount.
       required:
       - amount
-      - code
       - name
       - parent_code
-      - type
+    CompanyOpeningEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: Accounting date of the opening entry.
+        inventory_kind:
+          allOf:
+          - $ref: '#/components/schemas/InventoryKindEnum'
+          default: INITIAL
+          description: |-
+            Whether the opening is based on the initial inventory or a later general inventory.
+
+            * `INITIAL` - Inventario Inicial
+            * `GENERAL` - Inventario General
+        source_ref:
+          type: string
+          default: ''
+          description: Optional reference, e.g. "APERTURA-001" or "INV-GRAL-001".
+          maxLength: 100
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyOpeningAccountItem'
+          description: Asset items that will be posted to Debe.
+        liabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyOpeningAccountItem'
+          description: Liability items that will be posted to Haber.
+      required:
+      - assets
+      - date
     CompanySelector:
       type: object
       properties:
@@ -1862,7 +1919,15 @@ components:
           type: boolean
           readOnly: true
           description: If true, accounting writes and metadata updates are blocked.
+        has_opening_entry:
+          type: boolean
+          readOnly: true
+        accounting_ready:
+          type: boolean
+          readOnly: true
       required:
+      - accounting_ready
+      - has_opening_entry
       - id
       - is_demo
       - is_read_only
@@ -2044,6 +2109,14 @@ components:
       - next
       - previous
       - results
+    InventoryKindEnum:
+      enum:
+      - INITIAL
+      - GENERAL
+      type: string
+      description: |-
+        * `INITIAL` - Inventario Inicial
+        * `GENERAL` - Inventario General
     Item:
       type: object
       properties:
@@ -2536,12 +2609,14 @@ components:
         * `student` - Student
     SourceTypeEnum:
       enum:
+      - OPENING
       - MANUAL
       - INVOICE
       - RECEIPT
       - OTHER
       type: string
       description: |-
+        * `OPENING` - Apertura
         * `MANUAL` - Manual
         * `INVOICE` - Factura
         * `RECEIPT` - Recibo
@@ -2569,13 +2644,23 @@ components:
           type: string
         tax_id:
           type: string
+        has_opening_entry:
+          type: boolean
+        accounting_ready:
+          type: boolean
+        opening_entry_id:
+          type: integer
+          nullable: true
         created_at:
           type: string
           format: date-time
       required:
+      - accounting_ready
       - created_at
+      - has_opening_entry
       - id
       - name
+      - opening_entry_id
       - tax_id
     TeacherCourseCompaniesPaginatedResponse:
       type: object
@@ -2806,6 +2891,13 @@ components:
           type: string
           format: date
           nullable: true
+        has_opening_entry:
+          type: boolean
+        accounting_ready:
+          type: boolean
+        opening_entry_id:
+          type: integer
+          nullable: true
         books_closed_until:
           type: string
           format: date
@@ -2818,12 +2910,15 @@ components:
           format: date-time
       required:
       - account_count
+      - accounting_ready
       - books_closed_until
       - created_at
+      - has_opening_entry
       - id
       - journal_entry_count
       - last_entry_date
       - name
+      - opening_entry_id
       - tax_id
       - updated_at
     TeacherStudentContextResponse:

@@ -74,6 +74,9 @@ class TeacherCompanyItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     tax_id = serializers.CharField(allow_blank=True)
+    has_opening_entry = serializers.BooleanField()
+    accounting_ready = serializers.BooleanField()
+    opening_entry_id = serializers.IntegerField(allow_null=True)
     created_at = serializers.DateTimeField()
 
 
@@ -204,6 +207,9 @@ class TeacherStudentContextCompanySerializer(serializers.Serializer):
     account_count = serializers.IntegerField()
     journal_entry_count = serializers.IntegerField()
     last_entry_date = serializers.DateField(allow_null=True)
+    has_opening_entry = serializers.BooleanField()
+    accounting_ready = serializers.BooleanField()
+    opening_entry_id = serializers.IntegerField(allow_null=True)
     books_closed_until = serializers.DateField(allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()

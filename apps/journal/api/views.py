@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.pagination import paginate_queryset
+from apps.companies.opening import assert_company_accounting_ready
 from apps.companies import selectors as company_selectors
 from apps.journal import selectors, services
 from apps.journal.api.serializers import (
@@ -41,6 +42,7 @@ class JournalEntryListCreateView(APIView):
         ],
         responses={
             200: JournalEntryListPaginatedSerializer,
+            409: OpenApiResponse(description="Company must be opened before journal is available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company not found"),
@@ -49,6 +51,7 @@ class JournalEntryListCreateView(APIView):
     )
     def get(self, request: Request, company_id: int) -> Response:
         company = self._get_company(company_id, request.user)
+        assert_company_accounting_ready(company=company)
         entries_qs = selectors.list_journal_entries(company=company)
         paginator, page = paginate_queryset(request=request, queryset=entries_qs)
         data = JournalEntryListSerializer(page, many=True).data
@@ -66,7 +69,10 @@ class JournalEntryListCreateView(APIView):
             201: JournalEntryDetailSerializer,
             400: OpenApiResponse(description="Validation or business rule error"),
             409: OpenApiResponse(
-                description="Closed period, read-only demo company, or concurrent conflict"
+                description=(
+                    "Company not opened, closed period, read-only demo company, "
+                    "or concurrent conflict"
+                )
             ),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
@@ -107,6 +113,7 @@ class JournalEntryDetailView(APIView):
         description="Returns full detail of a journal entry including all lines.",
         responses={
             200: JournalEntryDetailSerializer,
+            409: OpenApiResponse(description="Company must be opened before journal is available"),
             401: OpenApiResponse(description="Authentication required"),
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company or entry not found"),
@@ -115,6 +122,7 @@ class JournalEntryDetailView(APIView):
     )
     def get(self, request: Request, company_id: int, entry_id: int) -> Response:
         company = company_selectors.get_company(pk=company_id, user=request.user)
+        assert_company_accounting_ready(company=company)
         entry = selectors.get_journal_entry(pk=entry_id, company=company)
         return Response(JournalEntryDetailSerializer(entry).data)
 
@@ -134,7 +142,10 @@ class JournalEntryReverseView(APIView):
             403: OpenApiResponse(description="Not the company owner or teacher"),
             404: OpenApiResponse(description="Company or entry not found"),
             409: OpenApiResponse(
-                description="Already reversed, closed period, or read-only demo company"
+                description=(
+                    "Company not opened, already reversed, closed period, "
+                    "or read-only demo company"
+                )
             ),
         },
         tags=["journal"],

@@ -82,8 +82,11 @@ testpaths = ["tests"]
 
 [tool.pyright]
 pythonVersion = "3.12"
-typeCheckingMode = "off"
-include = ["apps", "config", "tests"]
+typeCheckingMode = "basic"
+include = [
+    "apps/common",
+    "config/exceptions.py",
+]
 exclude = [
     "**/migrations/**",
     "tests/**",

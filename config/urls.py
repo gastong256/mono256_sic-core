@@ -5,6 +5,7 @@ from django.urls import include, path
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework import serializers
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,6 +29,8 @@ logger = structlog.get_logger(__name__)
 
 
 class LivenessView(APIView):
+    permission_classes = [AllowAny]
+
     @extend_schema(
         operation_id="liveness",
         summary="Liveness probe",
@@ -39,6 +42,8 @@ class LivenessView(APIView):
 
 
 class ReadinessView(APIView):
+    permission_classes = [AllowAny]
+
     @staticmethod
     def _check_db() -> bool:
         from django.db import connection

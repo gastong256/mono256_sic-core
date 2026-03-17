@@ -10,6 +10,7 @@ class JournalEntry(TimeStampedModel):
     """Immutable accounting entry; once posted it cannot be edited or deleted."""
 
     class SourceType(models.TextChoices):
+        OPENING = "OPENING", "Apertura"
         MANUAL = "MANUAL", "Manual"
         INVOICE = "INVOICE", "Factura"
         RECEIPT = "RECEIPT", "Recibo"
@@ -64,6 +65,13 @@ class JournalEntry(TimeStampedModel):
     class Meta:
         ordering = ["company", "entry_number"]
         unique_together = [("company", "entry_number")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company"],
+                condition=models.Q(source_type="OPENING"),
+                name="one_opening_entry_per_company",
+            )
+        ]
         indexes = [
             models.Index(
                 fields=["company", "date", "entry_number"],

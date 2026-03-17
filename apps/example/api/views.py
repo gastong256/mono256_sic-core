@@ -4,17 +4,21 @@ import structlog
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.example import selectors, services
 from apps.example.api.serializers import ItemCreateSerializer, ItemSerializer
+from apps.example.models import Item
 
 logger = structlog.get_logger(__name__)
 
 
 class PingView(APIView):
+    permission_classes = [AllowAny]
+
     @extend_schema(
         operation_id="ping",
         summary="Health ping",
@@ -26,6 +30,8 @@ class PingView(APIView):
 
 
 class ItemCreateView(APIView):
+    permission_classes = [AllowAny]
+
     @extend_schema(
         operation_id="create_item",
         summary="Create item",
@@ -47,6 +53,8 @@ class ItemCreateView(APIView):
 
 
 class ItemDetailView(APIView):
+    permission_classes = [AllowAny]
+
     @extend_schema(
         operation_id="get_item",
         summary="Get item by ID",
@@ -59,7 +67,7 @@ class ItemDetailView(APIView):
     def get(self, request: Request, pk: uuid.UUID) -> Response:
         try:
             item = selectors.get_item(pk)
-        except Exception:
+        except Item.DoesNotExist:
             raise NotFound(detail="Item not found.")
 
         return Response(ItemSerializer(item).data)

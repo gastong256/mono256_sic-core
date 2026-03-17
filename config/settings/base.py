@@ -171,7 +171,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -202,6 +202,8 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Implementation of accounting system based in hordak and following SIC (Andrisani) definitions.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "SERVE_AUTHENTICATION": [],
     "CONTACT": {"name": "gastong256"},
     "SCHEMA_PATH_PREFIX": "/api/v[0-9]",
 }

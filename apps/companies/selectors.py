@@ -1,6 +1,7 @@
 from django.db.models import Count, Q, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
+from apps.companies.opening import with_accounting_state
 from apps.companies.models import Company
 from apps.users.models import User
 
@@ -28,7 +29,9 @@ def _student_can_access_demo_company(*, student: User, company: Company) -> bool
 
 
 def list_companies(*, user) -> QuerySet[Company]:
-    base_qs = Company.objects.select_related("owner").annotate(account_count=Count("accounts"))
+    base_qs = with_accounting_state(
+        Company.objects.select_related("owner").annotate(account_count=Count("accounts"))
+    )
 
     if user.role == User.Role.ADMIN:
         return base_qs.all()
@@ -48,7 +51,7 @@ def list_companies(*, user) -> QuerySet[Company]:
 
 def get_company(*, pk: int, user) -> Company:
     try:
-        company = Company.objects.select_related("owner").get(pk=pk)
+        company = with_accounting_state(Company.objects.select_related("owner")).get(pk=pk)
     except Company.DoesNotExist:
         raise NotFound(detail="Company not found.")
 

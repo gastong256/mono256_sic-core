@@ -1,5 +1,7 @@
 import datetime
+from dataclasses import dataclass
 from decimal import Decimal
+from typing import Mapping, Sequence
 
 from django.db import IntegrityError, transaction
 from moneyed import Money
@@ -9,10 +11,18 @@ from hordak.models import Account, Leg
 from hordak.models import Transaction as HordakTransaction
 
 from config.exceptions import ConflictError
+from apps.companies.opening import assert_company_accounting_ready, company_has_opening_entry
 from apps.companies.models import Company, CompanyAccount
 from apps.companies.services import assert_company_writable
 from apps.journal.models import JournalEntry, JournalEntryLine
 from apps.reports.cache import bump_report_cache_version
+
+
+@dataclass(frozen=True)
+class JournalLineInput:
+    account_id: int
+    type: str
+    amount: Decimal
 
 
 def _assert_books_open(*, company: Company, date: datetime.date) -> None:
@@ -24,7 +34,18 @@ def _assert_books_open(*, company: Company, date: datetime.date) -> None:
         )
 
 
-def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
+def _normalize_lines(*, lines: Sequence[Mapping[str, object]]) -> list[JournalLineInput]:
+    return [
+        JournalLineInput(
+            account_id=int(line["account_id"]),
+            type=str(line["type"]),
+            amount=Decimal(str(line["amount"])),
+        )
+        for line in lines
+    ]
+
+
+def _validate_lines(lines: Sequence[JournalLineInput], company: Company) -> dict[int, Account]:
     """
     Validate Angrisani asiento rules before any write:
     - at least one debit and one credit
@@ -35,7 +56,7 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
     if not lines:
         raise ValidationError("El asiento debe tener al menos una línea deudora y una acreedora.")
 
-    account_ids = {line["account_id"] for line in lines}
+    account_ids = {line.account_id for line in lines}
     accounts = {account.pk: account for account in Account.objects.filter(pk__in=account_ids)}
     missing = account_ids - set(accounts.keys())
     if missing:
@@ -55,9 +76,9 @@ def _validate_lines(lines: list[dict], company: Company) -> dict[int, Account]:
     has_credit = False
 
     for line in lines:
-        amount: Decimal = line["amount"]
-        line_type: str = line["type"]
-        account_id: int = line["account_id"]
+        amount = line.amount
+        line_type = line.type
+        account_id = line.account_id
 
         if amount <= 0:
             raise ValidationError("El importe de cada línea debe ser mayor a cero.")
@@ -118,8 +139,16 @@ def create_journal_entry(
 ) -> JournalEntry:
     """Create and post an immutable asiento (Hordak transaction + legs + mirror lines)."""
     assert_company_writable(company=company)
+    if source_type == JournalEntry.SourceType.OPENING:
+        if company_has_opening_entry(company=company):
+            raise ConflictError("This company already has an opening entry.")
+        if company.journal_entries.exists():
+            raise ConflictError("Opening entry must be the first accounting entry of the company.")
+    else:
+        assert_company_accounting_ready(company=company)
     _assert_books_open(company=company, date=date)
-    accounts = _validate_lines(lines, company)
+    normalized_lines = _normalize_lines(lines=lines)
+    accounts = _validate_lines(normalized_lines, company)
     next_number = _next_entry_number(company)
 
     hordak_tx = HordakTransaction.objects.create(
@@ -128,12 +157,12 @@ def create_journal_entry(
     )
 
     legs_to_create: list[Leg] = []
-    for line in lines:
-        account = accounts[line["account_id"]]
+    for line in normalized_lines:
+        account = accounts[line.account_id]
         currency = account.currencies[0]
-        money = Money(line["amount"], currency)
+        money = Money(line.amount, currency)
 
-        if line["type"] == JournalEntryLine.LineType.DEBIT:
+        if line.type == JournalEntryLine.LineType.DEBIT:
             legs_to_create.append(Leg(transaction=hordak_tx, account=account, debit=money))
         else:
             legs_to_create.append(Leg(transaction=hordak_tx, account=account, credit=money))
@@ -157,11 +186,11 @@ def create_journal_entry(
         [
             JournalEntryLine(
                 journal_entry=entry,
-                account_id=line["account_id"],
-                type=line["type"],
-                amount=line["amount"],
+                account_id=line.account_id,
+                type=line.type,
+                amount=line.amount,
             )
-            for line in lines
+            for line in normalized_lines
         ]
     )
 
@@ -181,8 +210,11 @@ def reverse_journal_entry(
 ) -> JournalEntry:
     """Create contra-entry by swapping debit/credit on every original line."""
     assert_company_writable(company=company)
+    assert_company_accounting_ready(company=company)
     if original_entry.company_id != company.pk:
         raise ValidationError("Asiento contable no encontrado.")
+    if original_entry.source_type == JournalEntry.SourceType.OPENING:
+        raise ConflictError("Opening entries cannot be reversed.")
 
     if JournalEntry.objects.filter(reversal_of=original_entry).exists():
         raise ConflictError("This entry has already been reversed.")
@@ -194,7 +226,7 @@ def reverse_journal_entry(
     if not original_lines:
         raise ValidationError("Cannot reverse an entry with no lines.")
 
-    reversed_lines: list[dict] = []
+    reversed_lines: list[JournalLineInput] = []
     account_map = {line.account_id: line.account for line in original_lines}
     for line in original_lines:
         reversed_type = (
@@ -203,11 +235,11 @@ def reverse_journal_entry(
             else JournalEntryLine.LineType.DEBIT
         )
         reversed_lines.append(
-            {
-                "account_id": line.account_id,
-                "type": reversed_type,
-                "amount": line.amount,
-            }
+            JournalLineInput(
+                account_id=line.account_id,
+                type=reversed_type,
+                amount=line.amount,
+            )
         )
 
     reversal_description = (
@@ -224,10 +256,10 @@ def reverse_journal_entry(
 
     legs_to_create: list[Leg] = []
     for line in reversed_lines:
-        account = account_map[line["account_id"]]
+        account = account_map[line.account_id]
         currency = account.currencies[0]
-        money = Money(line["amount"], currency)
-        if line["type"] == JournalEntryLine.LineType.DEBIT:
+        money = Money(line.amount, currency)
+        if line.type == JournalEntryLine.LineType.DEBIT:
             legs_to_create.append(Leg(transaction=hordak_tx, account=account, debit=money))
         else:
             legs_to_create.append(Leg(transaction=hordak_tx, account=account, credit=money))
@@ -252,9 +284,9 @@ def reverse_journal_entry(
         [
             JournalEntryLine(
                 journal_entry=reversal_entry,
-                account_id=line["account_id"],
-                type=line["type"],
-                amount=line["amount"],
+                account_id=line.account_id,
+                type=line.type,
+                amount=line.amount,
             )
             for line in reversed_lines
         ]

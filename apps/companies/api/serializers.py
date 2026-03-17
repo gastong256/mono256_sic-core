@@ -2,16 +2,22 @@ import re
 
 from rest_framework import serializers
 
+from apps.companies.opening import (
+    OPENING_ASSET_PARENT_CODES,
+    OPENING_LIABILITY_PARENT_CODES,
+)
 from apps.companies.models import Company
-from apps.journal.models import JournalEntry, JournalEntryLine
+from apps.journal.models import JournalEntry
 
-ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}\.\d{2}$")
 PARENT_ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}$")
 
 
 class CompanySerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
     account_count = serializers.SerializerMethodField()
+    has_opening_entry = serializers.SerializerMethodField()
+    accounting_ready = serializers.SerializerMethodField()
+    opening_entry_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
@@ -25,17 +31,22 @@ class CompanySerializer(serializers.ModelSerializer):
             "books_closed_until",
             "is_demo",
             "is_read_only",
+            "has_opening_entry",
+            "accounting_ready",
+            "opening_entry_id",
             "created_at",
             "updated_at",
         ]
         read_only_fields = [
             "id",
-            "description",
             "owner_username",
             "account_count",
             "books_closed_until",
             "is_demo",
             "is_read_only",
+            "has_opening_entry",
+            "accounting_ready",
+            "opening_entry_id",
             "created_at",
             "updated_at",
         ]
@@ -44,6 +55,24 @@ class CompanySerializer(serializers.ModelSerializer):
         if hasattr(obj, "account_count"):
             return int(obj.account_count)
         return obj.accounts.count()
+
+    def get_has_opening_entry(self, obj: Company) -> bool:
+        if hasattr(obj, "has_opening_entry"):
+            return bool(obj.has_opening_entry)
+        return obj.journal_entries.filter(source_type=JournalEntry.SourceType.OPENING).exists()
+
+    def get_accounting_ready(self, obj: Company) -> bool:
+        return self.get_has_opening_entry(obj)
+
+    def get_opening_entry_id(self, obj: Company) -> int | None:
+        opening_id = getattr(obj, "opening_entry_id", None)
+        if opening_id is not None:
+            return int(opening_id)
+        return (
+            obj.journal_entries.filter(source_type=JournalEntry.SourceType.OPENING)
+            .values_list("id", flat=True)
+            .first()
+        )
 
 
 class CompanyWriteSerializer(serializers.Serializer):
@@ -63,11 +92,7 @@ class CompanyWriteSerializer(serializers.Serializer):
     )
 
 
-class CompanyOpeningLineSerializer(serializers.Serializer):
-    code = serializers.CharField(
-        max_length=10,
-        help_text="Full account code in format X.XX.XX (e.g. 1.01.01).",
-    )
+class CompanyOpeningAccountItemSerializer(serializers.Serializer):
     name = serializers.CharField(
         max_length=255,
         help_text="Movement-account name to create or reuse for this company.",
@@ -76,22 +101,11 @@ class CompanyOpeningLineSerializer(serializers.Serializer):
         max_length=4,
         help_text="Parent colectiva code in format X.XX (e.g. 1.01).",
     )
-    type = serializers.ChoiceField(
-        choices=JournalEntryLine.LineType.choices,
-        help_text="DEBIT or CREDIT.",
-    )
     amount = serializers.DecimalField(
         max_digits=15,
         decimal_places=2,
         help_text="Positive amount.",
     )
-
-    def validate_code(self, value: str) -> str:
-        if not ACCOUNT_CODE_RE.match(value):
-            raise serializers.ValidationError(
-                "Account code must match format X.XX.XX (e.g. 1.04.01)."
-            )
-        return value
 
     def validate_parent_code(self, value: str) -> str:
         if not PARENT_ACCOUNT_CODE_RE.match(value):
@@ -105,53 +119,81 @@ class CompanyOpeningLineSerializer(serializers.Serializer):
             raise serializers.ValidationError("El importe de cada línea debe ser mayor a cero.")
         return value
 
-    def validate(self, attrs: dict) -> dict:
-        code = attrs["code"]
-        parent_code = attrs["parent_code"]
-        expected_prefix = f"{parent_code}."
-        if not code.startswith(expected_prefix):
-            raise serializers.ValidationError(
-                {"code": f"Account code must start with '{expected_prefix}'."}
-            )
-        return attrs
-
 
 class CompanyOpeningEntrySerializer(serializers.Serializer):
     date = serializers.DateField(help_text="Accounting date of the opening entry.")
-    description = serializers.CharField(
-        max_length=500,
-        help_text="Glosa / description of the opening entry.",
-    )
-    source_type = serializers.ChoiceField(
-        choices=JournalEntry.SourceType.choices,
-        default=JournalEntry.SourceType.MANUAL,
+    inventory_kind = serializers.ChoiceField(
+        choices=[("INITIAL", "Inventario Inicial"), ("GENERAL", "Inventario General")],
+        default="INITIAL",
         required=False,
+        help_text="Whether the opening is based on the initial inventory or a later general inventory.",
     )
     source_ref = serializers.CharField(
         max_length=100,
         required=False,
         allow_blank=True,
         default="",
-        help_text='Optional reference, e.g. "APERTURA-001".',
+        help_text='Optional reference, e.g. "APERTURA-001" or "INV-GRAL-001".',
     )
-    lines = CompanyOpeningLineSerializer(
+    assets = CompanyOpeningAccountItemSerializer(
         many=True,
-        min_length=2,
-        help_text="Opening lines with per-line account creation metadata.",
+        min_length=1,
+        help_text="Asset items that will be posted to Debe.",
+    )
+    liabilities = CompanyOpeningAccountItemSerializer(
+        many=True,
+        required=False,
+        default=list,
+        help_text="Liability items that will be posted to Haber.",
     )
 
-    def validate_lines(self, value: list[dict]) -> list[dict]:
-        specs_by_code: dict[str, tuple[str, str]] = {}
+    def _validate_unique_specs(self, *, value: list[dict], field_name: str) -> list[dict]:
+        specs: set[tuple[str, str]] = set()
         for item in value:
-            code = item["code"]
-            spec = (item["name"], item["parent_code"])
-            previous = specs_by_code.get(code)
-            if previous and previous != spec:
+            spec = (item["parent_code"], item["name"].strip().lower())
+            if spec in specs:
                 raise serializers.ValidationError(
-                    f"Opening line account '{code}' must use the same name and parent_code."
+                    f"Duplicate account definition in '{field_name}' for parent_code "
+                    f"'{item['parent_code']}' and name '{item['name']}'."
                 )
-            specs_by_code[code] = spec
+            specs.add(spec)
         return value
+
+    def validate_assets(self, value: list[dict]) -> list[dict]:
+        self._validate_unique_specs(value=value, field_name="assets")
+        invalid_codes = sorted(
+            {
+                item["parent_code"]
+                for item in value
+                if item["parent_code"] not in OPENING_ASSET_PARENT_CODES
+            }
+        )
+        if invalid_codes:
+            raise serializers.ValidationError(
+                f"Invalid asset parent_code(s) for opening: {', '.join(invalid_codes)}."
+            )
+        return value
+
+    def validate_liabilities(self, value: list[dict]) -> list[dict]:
+        self._validate_unique_specs(value=value, field_name="liabilities")
+        invalid_codes = sorted(
+            {
+                item["parent_code"]
+                for item in value
+                if item["parent_code"] not in OPENING_LIABILITY_PARENT_CODES
+            }
+        )
+        if invalid_codes:
+            raise serializers.ValidationError(
+                f"Invalid liability parent_code(s) for opening: {', '.join(invalid_codes)}."
+            )
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        assets = attrs.get("assets") or []
+        if not assets:
+            raise serializers.ValidationError({"assets": "At least one asset is required."})
+        return attrs
 
 
 class CompanyCreateSerializer(CompanyWriteSerializer):
@@ -163,11 +205,29 @@ class CompanyCreateSerializer(CompanyWriteSerializer):
 
 class CompanySelectorSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
+    has_opening_entry = serializers.SerializerMethodField()
+    accounting_ready = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
-        fields = ["id", "name", "owner_username", "is_demo", "is_read_only"]
+        fields = [
+            "id",
+            "name",
+            "owner_username",
+            "is_demo",
+            "is_read_only",
+            "has_opening_entry",
+            "accounting_ready",
+        ]
         read_only_fields = fields
+
+    def get_has_opening_entry(self, obj: Company) -> bool:
+        if hasattr(obj, "has_opening_entry"):
+            return bool(obj.has_opening_entry)
+        return obj.journal_entries.filter(source_type=JournalEntry.SourceType.OPENING).exists()
+
+    def get_accounting_ready(self, obj: Company) -> bool:
+        return self.get_has_opening_entry(obj)
 
 
 class CompanySelectorListSerializer(serializers.Serializer):

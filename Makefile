@@ -30,13 +30,15 @@ lint-fix: ## Run ruff with auto-fix
 	uv run ruff check --fix .
 
 format: ## Run black formatter
+	uv run ruff format .
 	uv run black .
 
 format-check: ## Check formatting without modifying files
+	uv run ruff format --check .
 	uv run black --check .
 
 typecheck: ## Run pyright type checker
-	uv run pyright
+	./.venv/bin/pyright
 
 migrate: ## Apply database migrations
 	$(MANAGE) migrate

@@ -100,6 +100,13 @@ class JournalEntryCreateSerializer(serializers.Serializer):
         help_text="At least one DEBIT and one CREDIT line, balanced.",
     )
 
+    def validate_source_type(self, value: str) -> str:
+        if value == JournalEntry.SourceType.OPENING:
+            raise serializers.ValidationError(
+                "Opening entries must be created through the company opening-entry flow."
+            )
+        return value
+
     def validate_lines(self, value: list) -> list:
         if len(value) < 2:
             raise serializers.ValidationError(
