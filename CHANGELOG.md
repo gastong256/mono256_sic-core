@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.0 (2026-03-17)
+
+### Features
+
+- Add simplified accounting closing workflow with preview and reopening
+  ([`a0022ce`](https://github.com/gastong256/mono256_sic-core/commit/a0022ce6836be30a05d9bf49476c6ea9755003f7))
+
+
 ## v0.7.0 (2026-03-17)
 
 ### Bug Fixes
