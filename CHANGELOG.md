@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.7.0 (2026-03-17)
+
+### Bug Fixes
+
+- Upgrade uv lock version
+  ([`7acbd51`](https://github.com/gastong256/mono256_sic-core/commit/7acbd5157d5ac7bbc395040dba9e3a8b335aad6e))
+
+### Features
+
+- Add opening-entry workflow and harden API defaults
+  ([`b56de16`](https://github.com/gastong256/mono256_sic-core/commit/b56de163ecc7cdb5c3eac9c22829fe6d65fe1d71))
+
+
 ## v0.6.0 (2026-03-16)
 
 ### Features
