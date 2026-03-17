@@ -17,6 +17,16 @@ from apps.companies.services import assert_company_writable
 from apps.journal.models import JournalEntry, JournalEntryLine
 from apps.reports.cache import bump_report_cache_version
 
+NON_REVERSIBLE_SOURCE_TYPES = frozenset(
+    {
+        JournalEntry.SourceType.OPENING,
+        JournalEntry.SourceType.ADJUSTMENT,
+        JournalEntry.SourceType.RESULT_CLOSING,
+        JournalEntry.SourceType.PATRIMONIAL_CLOSING,
+        JournalEntry.SourceType.REOPENING,
+    }
+)
+
 
 @dataclass(frozen=True)
 class JournalLineInput:
@@ -213,8 +223,8 @@ def reverse_journal_entry(
     assert_company_accounting_ready(company=company)
     if original_entry.company_id != company.pk:
         raise ValidationError("Asiento contable no encontrado.")
-    if original_entry.source_type == JournalEntry.SourceType.OPENING:
-        raise ConflictError("Opening entries cannot be reversed.")
+    if original_entry.source_type in NON_REVERSIBLE_SOURCE_TYPES:
+        raise ConflictError("This entry type cannot be reversed.")
 
     if JournalEntry.objects.filter(reversal_of=original_entry).exists():
         raise ConflictError("This entry has already been reversed.")

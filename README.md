@@ -19,6 +19,7 @@
   - [Authentication](#authentication)
   - [Companies](#companies)
   - [Accounts](#accounts)
+  - [Simplified Closing](#simplified-closing)
 - [Project Structure](#project-structure)
 - [Local Dev Workflow](#local-dev-workflow)
 - [Observability](#observability)
@@ -752,6 +753,48 @@ Selector-friendly variants are also available on:
 
 ---
 
+### Simplified Closing
+
+The API also supports a simplified operational closing flow built on top of the
+same immutable journal engine.
+
+Available endpoints:
+
+- `GET /api/v1/companies/{company_id}/closing/state/`
+- `POST /api/v1/companies/{company_id}/closing/preview/`
+- `POST /api/v1/companies/{company_id}/closing/execute/`
+
+Request body for preview/execute:
+
+```json
+{
+  "closing_date": "2026-12-31",
+  "reopening_date": "2027-01-01",
+  "cash_actual": "1100.00",
+  "inventory_actual": "450.00"
+}
+```
+
+Behavior:
+
+- `cash_actual` triggers an optional arqueo de caja adjustment
+- `inventory_actual` triggers an optional mercaderías inventory adjustment
+- both work with the aggregated balance of the corresponding collective:
+  - `1.01 Caja`
+  - `1.09 Mercaderías`
+- the backend creates the support movement accounts it needs automatically
+- result closing, patrimonial closing, and reopening are generated as immutable journal entries
+- after execution, `books_closed_until` is moved to `closing_date`
+
+This simplified flow deliberately excludes:
+
+- formal fiscal-year entities
+- automatic CMV calculation
+- distribution of the result
+- numbering restarts by exercise
+
+---
+
 ## Project Structure
 
 ```
@@ -765,6 +808,7 @@ apps/
       commands/       load_chart_of_accounts
   accounts/           Wraps hordak.Account — no own DB models
     api/              Chart endpoints, account create/update/delete
+  closing/            Simplified closing preview/execute/state endpoints + domain services
   example/            Reference app (ping, items)
 config/
   settings/           base / local / test / prod

@@ -11,6 +11,10 @@ class JournalEntry(TimeStampedModel):
 
     class SourceType(models.TextChoices):
         OPENING = "OPENING", "Apertura"
+        ADJUSTMENT = "ADJUSTMENT", "Ajuste"
+        RESULT_CLOSING = "RESULT_CLOSING", "Cierre de Resultado"
+        PATRIMONIAL_CLOSING = "PATRIMONIAL_CLOSING", "Cierre Patrimonial"
+        REOPENING = "REOPENING", "Reapertura"
         MANUAL = "MANUAL", "Manual"
         INVOICE = "INVOICE", "Factura"
         RECEIPT = "RECEIPT", "Recibo"
@@ -36,7 +40,7 @@ class JournalEntry(TimeStampedModel):
     date = models.DateField(verbose_name="fecha")
     description = models.CharField(max_length=500, verbose_name="descripción")
     source_type = models.CharField(
-        max_length=10,
+        max_length=24,
         choices=SourceType.choices,
         default=SourceType.MANUAL,
         verbose_name="tipo de comprobante",

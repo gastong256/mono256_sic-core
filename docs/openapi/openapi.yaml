@@ -394,6 +394,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - {}
       responses:
         '201':
           content:
@@ -419,6 +420,8 @@ paths:
             schema:
               $ref: '#/components/schemas/TokenObtainPair'
         required: true
+      security:
+      - {}
       responses:
         '200':
           content:
@@ -440,6 +443,8 @@ paths:
             schema:
               $ref: '#/components/schemas/StableTokenRefresh'
         required: true
+      security:
+      - {}
       responses:
         '200':
           content:
@@ -515,6 +520,92 @@ paths:
           description: ''
         '400':
           description: Validation error
+  /api/v1/companies/{company_id}/closing/execute/:
+    post:
+      operationId: execute_company_simplified_closing
+      summary: Execute the simplified accounting closing
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimplifiedClosingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimplifiedClosingExecute'
+          description: ''
+        '403':
+          description: Permission denied
+        '409':
+          description: Closing cannot be executed for the selected dates
+  /api/v1/companies/{company_id}/closing/preview/:
+    post:
+      operationId: preview_company_simplified_closing
+      summary: Preview the simplified accounting closing plan
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimplifiedClosingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimplifiedClosingPreview'
+          description: ''
+        '403':
+          description: Permission denied
+        '409':
+          description: Closing cannot be prepared for the selected dates
+  /api/v1/companies/{company_id}/closing/state/:
+    get:
+      operationId: get_company_closing_state
+      summary: Get simplified closing state for a company
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimplifiedClosingState'
+          description: ''
   /api/v1/companies/{company_id}/journal/:
     get:
       operationId: list_journal_entries
@@ -2607,9 +2698,136 @@ components:
         * `admin` - Admin
         * `teacher` - Teacher
         * `student` - Student
+    SimplifiedClosingExecute:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company:
+          type: string
+        closing_date:
+          type: string
+          format: date
+        reopening_date:
+          type: string
+          format: date
+        books_closed_until:
+          type: string
+          format: date
+        created_entries:
+          type: array
+          items: {}
+      required:
+      - books_closed_until
+      - closing_date
+      - company
+      - company_id
+      - created_entries
+      - reopening_date
+    SimplifiedClosingPreview:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company:
+          type: string
+        closing_date:
+          type: string
+          format: date
+        reopening_date:
+          type: string
+          format: date
+        books_closed_until:
+          type: string
+          format: date
+          nullable: true
+        adjustments:
+          type: object
+          additionalProperties: {}
+        result_summary:
+          type: object
+          additionalProperties: {}
+        entries:
+          type: object
+          additionalProperties: {}
+      required:
+      - adjustments
+      - books_closed_until
+      - closing_date
+      - company
+      - company_id
+      - entries
+      - reopening_date
+      - result_summary
+    SimplifiedClosingRequest:
+      type: object
+      properties:
+        closing_date:
+          type: string
+          format: date
+          description: Closing date for the simplified accounting close.
+        reopening_date:
+          type: string
+          format: date
+          description: Reopening date for patrimonial balances; must be after closing_date.
+        cash_actual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          nullable: true
+          description: Optional physical cash count for arqueo.
+        inventory_actual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          nullable: true
+          description: Optional physical inventory amount for mercaderías.
+      required:
+      - closing_date
+      - reopening_date
+    SimplifiedClosingState:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company:
+          type: string
+        books_closed_until:
+          type: string
+          format: date
+          nullable: true
+        last_patrimonial_closing_entry_id:
+          type: integer
+          nullable: true
+        last_patrimonial_closing_date:
+          type: string
+          format: date
+          nullable: true
+        last_reopening_entry_id:
+          type: integer
+          nullable: true
+        last_reopening_date:
+          type: string
+          format: date
+          nullable: true
+        can_close:
+          type: boolean
+      required:
+      - books_closed_until
+      - can_close
+      - company
+      - company_id
+      - last_patrimonial_closing_date
+      - last_patrimonial_closing_entry_id
+      - last_reopening_date
+      - last_reopening_entry_id
     SourceTypeEnum:
       enum:
       - OPENING
+      - ADJUSTMENT
+      - RESULT_CLOSING
+      - PATRIMONIAL_CLOSING
+      - REOPENING
       - MANUAL
       - INVOICE
       - RECEIPT
@@ -2617,6 +2835,10 @@ components:
       type: string
       description: |-
         * `OPENING` - Apertura
+        * `ADJUSTMENT` - Ajuste
+        * `RESULT_CLOSING` - Cierre de Resultado
+        * `PATRIMONIAL_CLOSING` - Cierre Patrimonial
+        * `REOPENING` - Reapertura
         * `MANUAL` - Manual
         * `INVOICE` - Factura
         * `RECEIPT` - Recibo

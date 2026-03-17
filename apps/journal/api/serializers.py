@@ -101,9 +101,15 @@ class JournalEntryCreateSerializer(serializers.Serializer):
     )
 
     def validate_source_type(self, value: str) -> str:
-        if value == JournalEntry.SourceType.OPENING:
+        if value in {
+            JournalEntry.SourceType.OPENING,
+            JournalEntry.SourceType.ADJUSTMENT,
+            JournalEntry.SourceType.RESULT_CLOSING,
+            JournalEntry.SourceType.PATRIMONIAL_CLOSING,
+            JournalEntry.SourceType.REOPENING,
+        }:
             raise serializers.ValidationError(
-                "Opening entries must be created through the company opening-entry flow."
+                "This entry type must be created through its dedicated domain flow."
             )
         return value
 

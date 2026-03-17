@@ -65,6 +65,8 @@ CHART: list[tuple[str, str, str, list[tuple[str, str]]]] = [
             (".09", "Gastos Generales"),
             (".10", "Impuestos"),
             (".11", "Seguros"),
+            (".12", "Faltante de Caja"),
+            (".13", "Faltante de Mercaderías"),
         ],
     ),
     (
@@ -77,6 +79,8 @@ CHART: list[tuple[str, str, str, list[tuple[str, str]]]] = [
             (".03", "Intereses Ganados"),
             (".04", "Descuentos Obtenidos"),
             (".05", "Comisiones Ganadas"),
+            (".06", "Sobrante de Caja"),
+            (".07", "Sobrante de Mercaderías"),
         ],
     ),
 ]

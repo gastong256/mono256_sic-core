@@ -198,6 +198,7 @@ cython_debug/
 .env
 .env.local
 node_modules/
+.tmp/
 
 # Static / media
 staticfiles/
