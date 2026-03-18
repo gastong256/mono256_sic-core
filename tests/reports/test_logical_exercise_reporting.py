@@ -95,6 +95,19 @@ class TestLogicalExerciseReporting:
             date_from=datetime.date(2026, 3, 10),
             date_to=datetime.date(2027, 3, 17),
         )
+        assert jb_report["requested_range"] == {
+            "date_from": "2026-03-10",
+            "date_to": "2027-03-17",
+        }
+        assert jb_report["exercise_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": None,
+            "status": "open",
+        }
+        assert jb_report["visible_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": "2027-03-17",
+        }
         assert jb_report["active_exercise"]["start_date"] == "2027-01-01"
         assert jb_report["previous_exercises"][0]["start_date"] == "2026-01-01"
         assert all(entry["date"] >= "2027-01-01" for entry in jb_report["entries"])
@@ -105,6 +118,19 @@ class TestLogicalExerciseReporting:
             date_to=datetime.date(2027, 3, 17),
             account_id=cash_account.id,
         )
+        assert ledger_report["requested_range"] == {
+            "date_from": "2026-03-10",
+            "date_to": "2027-03-17",
+        }
+        assert ledger_report["exercise_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": None,
+            "status": "open",
+        }
+        assert ledger_report["visible_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": "2027-03-17",
+        }
         assert ledger_report["active_exercise"]["start_date"] == "2027-01-01"
         assert ledger_report["accounts"][0]["opening_balance"] == "0.00"
         assert ledger_report["accounts"][0]["movements"][0]["date"] == "2027-01-01"
@@ -114,6 +140,19 @@ class TestLogicalExerciseReporting:
             date_from=datetime.date(2026, 3, 10),
             date_to=datetime.date(2027, 3, 17),
         )
+        assert trial_report["requested_range"] == {
+            "date_from": "2026-03-10",
+            "date_to": "2027-03-17",
+        }
+        assert trial_report["exercise_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": None,
+            "status": "open",
+        }
+        assert trial_report["visible_range"] == {
+            "date_from": "2027-01-01",
+            "date_to": "2027-03-17",
+        }
         assert trial_report["active_exercise"]["start_date"] == "2027-01-01"
         assert trial_report["date_from"] == "2027-01-01"
 

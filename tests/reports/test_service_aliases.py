@@ -42,6 +42,8 @@ class TestReportServiceAliases:
 
         assert report["cached"] is True
         assert report["requested_date_to"] is not None
+        assert report["requested_range"]["date_to"] is not None
+        assert report["visible_range"]["date_to"] is not None
 
     def test_journal_book_returns_entries_only(self):
         owner = User.objects.create_user(username="owner-jb", password="x", role=User.Role.STUDENT)
@@ -81,6 +83,8 @@ class TestReportServiceAliases:
 
         assert report["cached"] is True
         assert report["requested_date_to"] is not None
+        assert report["requested_range"]["date_to"] is not None
+        assert report["visible_range"]["date_to"] is not None
 
     def test_ledger_returns_accounts_only(self):
         owner = User.objects.create_user(
@@ -121,6 +125,8 @@ class TestReportServiceAliases:
 
         assert report["cached"] is True
         assert report["requested_date_to"] is not None
+        assert report["requested_range"]["date_to"] is not None
+        assert report["visible_range"]["date_to"] is not None
 
     def test_trial_balance_returns_groups_only_and_grand_totals(self):
         owner = User.objects.create_user(
