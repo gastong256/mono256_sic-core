@@ -722,6 +722,27 @@ Canonical response keys:
 The old aliases `results`, `cards`, and `rows` are no longer part of the report
 contract.
 
+Reports now resolve requests through the company's logical accounting exercises:
+
+- `OPENING` starts the first logical exercise
+- each `REOPENING` starts the next exercise
+- each `PATRIMONIAL_CLOSING` ends the current exercise
+
+When a requested date range spans multiple logical exercises, the API returns the
+most recent intersected exercise as the active report window and includes
+references to earlier exercises in `previous_exercises`.
+
+Common exercise metadata keys returned by `journal-book`, `ledger`, and
+`trial-balance`:
+
+- `requested_date_from`
+- `requested_date_to`
+- `active_exercise`
+- `previous_exercises`
+
+This lets the frontend keep one primary report view while still offering
+exercise-aware navigation to prior closed cycles.
+
 Ledger also supports an optional selector helper:
 
 ```http
@@ -760,9 +781,12 @@ same immutable journal engine.
 
 Available endpoints:
 
+- `GET /api/v1/companies/{company_id}/logical-exercises/`
 - `GET /api/v1/companies/{company_id}/closing/state/`
 - `POST /api/v1/companies/{company_id}/closing/preview/`
 - `POST /api/v1/companies/{company_id}/closing/execute/`
+- `GET /api/v1/companies/{company_id}/closing/latest-snapshot/`
+- `GET /api/v1/companies/{company_id}/closing/snapshots/{snapshot_id}/`
 
 Request body for preview/execute:
 
@@ -784,7 +808,132 @@ Behavior:
   - `1.09 Mercaderías`
 - the backend creates the support movement accounts it needs automatically
 - result closing, patrimonial closing, and reopening are generated as immutable journal entries
+- preview now returns:
+  - the active logical exercise being closed
+  - references to prior exercises
+  - a draft `income_statement`
+  - a draft `balance_sheet`
 - after execution, `books_closed_until` is moved to `closing_date`
+- execution also creates an immutable closing snapshot storing:
+  - the confirmed balance sheet payload
+  - the confirmed income statement payload
+  - per-account patrimonial balances at close time
+
+Logical exercises can be listed independently:
+
+```http
+GET /api/v1/companies/12/logical-exercises/
+Authorization: Bearer <token>
+```
+
+Example response:
+
+```json
+{
+  "company_id": 12,
+  "company": "Ferretería Centro",
+  "current_exercise_id": "reopening:181",
+  "exercises": [
+    {
+      "exercise_id": "opening:123",
+      "exercise_index": 1,
+      "opening_entry_id": 123,
+      "opening_source_type": "OPENING",
+      "start_date": "2025-01-01",
+      "closing_entry_id": 180,
+      "closing_date": "2025-12-31",
+      "snapshot_id": 7,
+      "status": "closed"
+    },
+    {
+      "exercise_id": "reopening:181",
+      "exercise_index": 2,
+      "opening_entry_id": 181,
+      "opening_source_type": "REOPENING",
+      "start_date": "2026-01-01",
+      "closing_entry_id": null,
+      "closing_date": null,
+      "snapshot_id": null,
+      "status": "open"
+    }
+  ]
+}
+```
+
+Preview example:
+
+```json
+{
+  "company_id": 12,
+  "company": "Ferretería Centro",
+  "closing_date": "2026-12-31",
+  "reopening_date": "2027-01-01",
+  "books_closed_until": null,
+  "active_exercise": {
+    "exercise_id": "reopening:181",
+    "start_date": "2026-01-01",
+    "status": "open"
+  },
+  "previous_exercises": [
+    {
+      "exercise_id": "opening:123",
+      "start_date": "2025-01-01",
+      "closing_date": "2025-12-31",
+      "status": "closed"
+    }
+  ],
+  "income_statement": {
+    "date": "2026-12-31",
+    "net_result": {
+      "amount": "3675.00",
+      "kind": "gain"
+    }
+  },
+  "balance_sheet": {
+    "date": "2026-12-31",
+    "equation": {
+      "total_assets": "18640.00",
+      "total_liabilities_plus_equity": "18640.00",
+      "is_balanced": true
+    }
+  }
+}
+```
+
+Latest snapshot example:
+
+```http
+GET /api/v1/companies/12/closing/latest-snapshot/
+Authorization: Bearer <token>
+```
+
+```json
+{
+  "id": 7,
+  "company_id": 12,
+  "company": "Ferretería Centro",
+  "patrimonial_closing_entry_id": 900,
+  "reopening_entry_id": 901,
+  "closing_date": "2026-12-31",
+  "reopening_date": "2027-01-01",
+  "balance_sheet": {
+    "date": "2026-12-31"
+  },
+  "income_statement": {
+    "date": "2026-12-31"
+  },
+  "lines": [
+    {
+      "account_code": "1.01.01",
+      "account_name": "Caja Principal",
+      "root_code": "1",
+      "parent_code": "1.01",
+      "debit_balance": "1200.00",
+      "credit_balance": "0.00"
+    }
+  ]
+}
+```
 
 This simplified flow deliberately excludes:
 

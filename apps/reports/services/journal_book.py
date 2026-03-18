@@ -1,9 +1,14 @@
 import datetime
 from decimal import Decimal
 
+from apps.closing.selectors import resolve_report_exercise_context
 from apps.companies.models import Company
 from apps.journal.models import JournalEntry, JournalEntryLine
 from apps.reports import cache as report_cache
+from apps.reports.exercise_context import (
+    attach_report_exercise_metadata,
+    build_report_exercise_cache_parts,
+)
 
 _ZERO = Decimal("0")
 
@@ -15,30 +20,36 @@ def get_journal_book(
     date_to: datetime.date | None = None,
 ) -> dict:
     """Libro Diario: chronological entries with full lines and per-entry totals."""
-    cached = report_cache.get_cached_report(
-        report_name="journal_book",
-        company_id=company.id,
+    context = resolve_report_exercise_context(
+        company=company,
         date_from=date_from,
         date_to=date_to,
     )
+    cache_extra_parts = build_report_exercise_cache_parts(context=context)
+    actual_date_to = context.visible_to
+    cached = report_cache.get_cached_report(
+        report_name="journal_book",
+        company_id=company.id,
+        date_from=context.visible_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
+    )
     if cached is not None:
-        return cached
-
-    actual_date_to = date_to or datetime.date.today()
+        return attach_report_exercise_metadata(report=cached, context=context)
 
     qs = (
         JournalEntry.objects.filter(company=company)
         .order_by("date", "entry_number")
         .prefetch_related("lines__account")
     )
-    if date_from:
-        qs = qs.filter(date__gte=date_from)
+    if context.visible_from:
+        qs = qs.filter(date__gte=context.visible_from)
     qs = qs.filter(date__lte=actual_date_to)
 
     entries = list(qs)
 
-    if date_from:
-        actual_date_from = date_from
+    if context.visible_from:
+        actual_date_from = context.visible_from
     elif entries:
         actual_date_from = entries[0].date
     else:
@@ -107,9 +118,10 @@ def get_journal_book(
     report_cache.set_cached_report(
         report_name="journal_book",
         company_id=company.id,
-        date_from=date_from,
-        date_to=date_to,
+        date_from=context.visible_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
         value=report,
         is_demo=company.is_demo,
     )
-    return report
+    return attach_report_exercise_metadata(report=report, context=context)

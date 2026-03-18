@@ -3,9 +3,14 @@ from decimal import Decimal
 
 from django.db.models import Q, Sum
 
+from apps.closing.selectors import resolve_report_exercise_context
 from apps.companies.models import Company
 from apps.journal.models import JournalEntryLine
 from apps.reports import cache as report_cache
+from apps.reports.exercise_context import (
+    attach_report_exercise_metadata,
+    build_report_exercise_cache_parts,
+)
 
 _ZERO = Decimal("0")
 
@@ -27,24 +32,30 @@ def get_trial_balance(
     date_to: datetime.date | None = None,
 ) -> dict:
     """Balance de Comprobación: grouped subtotals (colectivas) + movement accounts."""
-    cached = report_cache.get_cached_report(
-        report_name="trial_balance",
-        company_id=company.id,
+    context = resolve_report_exercise_context(
+        company=company,
         date_from=date_from,
         date_to=date_to,
     )
+    actual_date_to = context.computed_to
+    cache_extra_parts = build_report_exercise_cache_parts(context=context)
+    cached = report_cache.get_cached_report(
+        report_name="trial_balance",
+        company_id=company.id,
+        date_from=context.computed_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
+    )
     if cached is not None:
-        return cached
-
-    actual_date_to = date_to or datetime.date.today()
+        return attach_report_exercise_metadata(report=cached, context=context)
 
     line_filter = Q(
         account__company_account__company=company,
         journal_entry__company=company,
         journal_entry__date__lte=actual_date_to,
     )
-    if date_from:
-        line_filter &= Q(journal_entry__date__gte=date_from)
+    if context.computed_from:
+        line_filter &= Q(journal_entry__date__gte=context.computed_from)
 
     rows = list(
         JournalEntryLine.objects.filter(line_filter)
@@ -65,8 +76,8 @@ def get_trial_balance(
         .order_by("account__full_code")
     )
 
-    if date_from:
-        actual_date_from = date_from
+    if context.computed_from:
+        actual_date_from = context.computed_from
     elif rows:
         first_date = (
             JournalEntryLine.objects.filter(
@@ -100,12 +111,13 @@ def get_trial_balance(
         report_cache.set_cached_report(
             report_name="trial_balance",
             company_id=company.id,
-            date_from=date_from,
-            date_to=date_to,
+            date_from=context.computed_from,
+            date_to=actual_date_to,
+            extra_parts=cache_extra_parts,
             value=report,
             is_demo=company.is_demo,
         )
-        return report
+        return attach_report_exercise_metadata(report=report, context=context)
 
     groups: dict[int, dict] = {}
     grand_debit = _ZERO
@@ -190,9 +202,10 @@ def get_trial_balance(
     report_cache.set_cached_report(
         report_name="trial_balance",
         company_id=company.id,
-        date_from=date_from,
-        date_to=date_to,
+        date_from=context.computed_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
         value=report,
         is_demo=company.is_demo,
     )
-    return report
+    return attach_report_exercise_metadata(report=report, context=context)

@@ -6,9 +6,14 @@ from django.db.models import Q, Sum
 
 from hordak.models import Account
 
+from apps.closing.selectors import resolve_report_exercise_context
 from apps.companies.models import Company
 from apps.journal.models import JournalEntryLine
 from apps.reports import cache as report_cache
+from apps.reports.exercise_context import (
+    attach_report_exercise_metadata,
+    build_report_exercise_cache_parts,
+)
 
 _ZERO = Decimal("0")
 
@@ -24,7 +29,16 @@ def _balance_delta(account_type: str, debit: Decimal, credit: Decimal) -> Decima
 
 
 def list_account_options(*, company: Company) -> list[dict]:
-    return [
+    cached = report_cache.get_cached_report(
+        report_name="ledger_account_options",
+        company_id=company.id,
+        date_from=None,
+        date_to=None,
+    )
+    if cached is not None:
+        return cached
+
+    options = [
         {
             "id": account.pk,
             "code": account.full_code,
@@ -34,6 +48,15 @@ def list_account_options(*, company: Company) -> list[dict]:
             "full_code"
         )
     ]
+    report_cache.set_cached_report(
+        report_name="ledger_account_options",
+        company_id=company.id,
+        date_from=None,
+        date_to=None,
+        value=options,
+        is_demo=company.is_demo,
+    )
+    return options
 
 
 def get_ledger(
@@ -46,17 +69,25 @@ def get_ledger(
     """Libro Mayor (Mayor Americano): opening, movements, and closing balance by account."""
     from rest_framework.exceptions import ValidationError
 
+    context = resolve_report_exercise_context(
+        company=company,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    actual_date_to = context.visible_to
+    cache_extra_parts = {
+        **build_report_exercise_cache_parts(context=context),
+        "account_id": account_id or "all",
+    }
     cached = report_cache.get_cached_report(
         report_name="ledger",
         company_id=company.id,
-        date_from=date_from,
-        date_to=date_to,
-        extra_parts={"account_id": account_id or "all"},
+        date_from=context.visible_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
     )
     if cached is not None:
-        return cached
-
-    actual_date_to = date_to or datetime.date.today()
+        return attach_report_exercise_metadata(report=cached, context=context)
 
     account_qs = Account.objects.filter(company_account__company=company).order_by("full_code")
 
@@ -73,7 +104,7 @@ def get_ledger(
         report = {
             "company_id": company.id,
             "company": company.name,
-            "date_from": str(date_from or actual_date_to),
+            "date_from": str(context.visible_from or actual_date_to),
             "date_to": str(actual_date_to),
             "account_id": account_id,
             "accounts": [],
@@ -81,21 +112,22 @@ def get_ledger(
         report_cache.set_cached_report(
             report_name="ledger",
             company_id=company.id,
-            date_from=date_from,
-            date_to=date_to,
-            extra_parts={"account_id": account_id or "all"},
+            date_from=context.visible_from,
+            date_to=actual_date_to,
+            extra_parts=cache_extra_parts,
             value=report,
             is_demo=company.is_demo,
         )
-        return report
+        return attach_report_exercise_metadata(report=report, context=context)
 
     opening_balances: dict[int, Decimal] = {pk: _ZERO for pk in account_ids}
-    if date_from:
+    if context.visible_from:
         opening_rows = (
             JournalEntryLine.objects.filter(
                 account_id__in=account_ids,
                 journal_entry__company=company,
-                journal_entry__date__lt=date_from,
+                journal_entry__date__lt=context.visible_from,
+                journal_entry__date__gte=context.computed_from,
             )
             .values("account_id")
             .annotate(
@@ -114,8 +146,8 @@ def get_ledger(
         journal_entry__company=company,
         journal_entry__date__lte=actual_date_to,
     )
-    if date_from:
-        movement_filter &= Q(journal_entry__date__gte=date_from)
+    if context.visible_from:
+        movement_filter &= Q(journal_entry__date__gte=context.visible_from)
 
     movements_qs = (
         JournalEntryLine.objects.filter(movement_filter)
@@ -127,8 +159,8 @@ def get_ledger(
     for line in movements_qs:
         movements_by_account[line.account_id].append(line)
 
-    if date_from:
-        actual_date_from = date_from
+    if context.visible_from:
+        actual_date_from = context.visible_from
     else:
         all_dates = [
             line.journal_entry.date for lines in movements_by_account.values() for line in lines
@@ -199,10 +231,10 @@ def get_ledger(
     report_cache.set_cached_report(
         report_name="ledger",
         company_id=company.id,
-        date_from=date_from,
-        date_to=date_to,
-        extra_parts={"account_id": account_id or "all"},
+        date_from=context.visible_from,
+        date_to=actual_date_to,
+        extra_parts=cache_extra_parts,
         value=report,
         is_demo=company.is_demo,
     )
-    return report
+    return attach_report_exercise_metadata(report=report, context=context)

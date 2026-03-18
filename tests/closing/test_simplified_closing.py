@@ -135,6 +135,9 @@ class TestSimplifiedClosingApi:
         )
 
         assert preview.status_code == 200, preview.data
+        assert preview.data["active_exercise"]["opening_source_type"] == "OPENING"
+        assert preview.data["balance_sheet"]["equation"]["is_balanced"] is True
+        assert preview.data["income_statement"]["net_result"]["amount"] == "250.00"
         assert preview.data["result_summary"]["total_positive"] == "300.00"
         assert preview.data["result_summary"]["total_negative"] == "50.00"
         assert preview.data["result_summary"]["net_result"] == "250.00"
@@ -151,6 +154,7 @@ class TestSimplifiedClosingApi:
         )
 
         assert execute.status_code == 200, execute.data
+        assert execute.data["snapshot_id"] is not None
         assert len(execute.data["created_entries"]) == 4
 
         company.refresh_from_db()
@@ -158,6 +162,11 @@ class TestSimplifiedClosingApi:
         assert company.journal_entries.filter(source_type="RESULT_CLOSING").count() == 2
         assert company.journal_entries.filter(source_type="PATRIMONIAL_CLOSING").count() == 1
         assert company.journal_entries.filter(source_type="REOPENING").count() == 1
+
+        latest_snapshot = api_client.get(f"/api/v1/companies/{company.id}/closing/latest-snapshot/")
+        assert latest_snapshot.status_code == 200
+        assert latest_snapshot.data["balance_sheet"]["equation"]["is_balanced"] is True
+        assert latest_snapshot.data["income_statement"]["net_result"]["amount"] == "250.00"
 
         blocked = api_client.post(
             f"/api/v1/companies/{company.id}/journal/",
@@ -313,3 +322,59 @@ class TestSimplifiedClosingApi:
         assert state.data["books_closed_until"] == "2026-12-31"
         assert state.data["last_patrimonial_closing_entry_id"] is not None
         assert state.data["last_reopening_entry_id"] is not None
+        assert state.data["current_exercise"]["opening_source_type"] == "REOPENING"
+
+    def test_logical_exercises_endpoint_lists_closed_and_open_cycles(self, api_client: APIClient):
+        student = User.objects.create_user(
+            username="student-logical-exercises",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        api_client.force_authenticate(student)
+        company = _open_company(owner=student, name="Empresa Ejercicios Lógicos")
+
+        execute = api_client.post(
+            f"/api/v1/companies/{company.id}/closing/execute/",
+            {
+                "closing_date": "2026-12-31",
+                "reopening_date": "2027-01-01",
+            },
+            format="json",
+        )
+        assert execute.status_code == 200, execute.data
+
+        response = api_client.get(f"/api/v1/companies/{company.id}/logical-exercises/")
+        assert response.status_code == 200
+        assert response.data["current_exercise_id"] is not None
+        assert len(response.data["exercises"]) == 2
+        assert response.data["exercises"][0]["status"] == "closed"
+        assert response.data["exercises"][0]["snapshot_id"] == execute.data["snapshot_id"]
+        assert response.data["exercises"][1]["status"] == "open"
+
+    def test_closing_snapshot_can_be_retrieved_by_id(self, api_client: APIClient):
+        student = User.objects.create_user(
+            username="student-snapshot-detail",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        api_client.force_authenticate(student)
+        company = _open_company(owner=student, name="Empresa Snapshot Detail")
+
+        execute = api_client.post(
+            f"/api/v1/companies/{company.id}/closing/execute/",
+            {
+                "closing_date": "2026-12-31",
+                "reopening_date": "2027-01-01",
+            },
+            format="json",
+        )
+        assert execute.status_code == 200, execute.data
+
+        response = api_client.get(
+            f"/api/v1/companies/{company.id}/closing/snapshots/{execute.data['snapshot_id']}/"
+        )
+        assert response.status_code == 200
+        assert response.data["id"] == execute.data["snapshot_id"]
+        assert response.data["patrimonial_closing_entry_id"] is not None
+        assert response.data["reopening_entry_id"] is not None
+        assert response.data["lines"]

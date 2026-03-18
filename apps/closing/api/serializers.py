@@ -64,8 +64,12 @@ class SimplifiedClosingPreviewSerializer(serializers.Serializer):
     closing_date = serializers.DateField()
     reopening_date = serializers.DateField()
     books_closed_until = serializers.DateField(allow_null=True)
+    active_exercise = serializers.DictField()
+    previous_exercises = serializers.ListField()
     adjustments = serializers.DictField()
     result_summary = serializers.DictField()
+    balance_sheet = serializers.DictField()
+    income_statement = serializers.DictField()
     entries = serializers.DictField()
 
 
@@ -77,6 +81,7 @@ class SimplifiedClosingStateSerializer(serializers.Serializer):
     last_patrimonial_closing_date = serializers.DateField(allow_null=True)
     last_reopening_entry_id = serializers.IntegerField(allow_null=True)
     last_reopening_date = serializers.DateField(allow_null=True)
+    current_exercise = serializers.DictField(allow_null=True)
     can_close = serializers.BooleanField()
 
 
@@ -86,4 +91,48 @@ class SimplifiedClosingExecuteSerializer(serializers.Serializer):
     closing_date = serializers.DateField()
     reopening_date = serializers.DateField()
     books_closed_until = serializers.DateField()
+    snapshot_id = serializers.IntegerField()
     created_entries = serializers.ListField()
+
+
+class LogicalExerciseSerializer(serializers.Serializer):
+    exercise_id = serializers.CharField()
+    exercise_index = serializers.IntegerField()
+    opening_entry_id = serializers.IntegerField()
+    opening_source_type = serializers.CharField()
+    start_date = serializers.DateField()
+    closing_entry_id = serializers.IntegerField(allow_null=True)
+    closing_date = serializers.DateField(allow_null=True)
+    snapshot_id = serializers.IntegerField(allow_null=True)
+    status = serializers.CharField()
+
+
+class LogicalExerciseListSerializer(serializers.Serializer):
+    company_id = serializers.IntegerField()
+    company = serializers.CharField()
+    current_exercise_id = serializers.CharField(allow_null=True)
+    exercises = LogicalExerciseSerializer(many=True)
+
+
+class ClosingSnapshotLineSerializer(serializers.Serializer):
+    account_id = serializers.IntegerField(allow_null=True)
+    account_code = serializers.CharField()
+    account_name = serializers.CharField()
+    account_type = serializers.CharField()
+    root_code = serializers.CharField()
+    parent_code = serializers.CharField()
+    debit_balance = serializers.CharField()
+    credit_balance = serializers.CharField()
+
+
+class ClosingSnapshotSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    company_id = serializers.IntegerField()
+    company = serializers.CharField()
+    patrimonial_closing_entry_id = serializers.IntegerField()
+    reopening_entry_id = serializers.IntegerField()
+    closing_date = serializers.DateField()
+    reopening_date = serializers.DateField()
+    balance_sheet = serializers.DictField()
+    income_statement = serializers.DictField()
+    lines = ClosingSnapshotLineSerializer(many=True)

@@ -5,12 +5,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.closing.api.serializers import (
+    ClosingSnapshotSerializer,
+    LogicalExerciseListSerializer,
     SimplifiedClosingExecuteSerializer,
     SimplifiedClosingPreviewSerializer,
     SimplifiedClosingRequestSerializer,
     SimplifiedClosingStateSerializer,
 )
-from apps.closing import services
+from apps.closing import selectors, services
 from apps.companies import selectors as company_selectors
 
 
@@ -27,6 +29,28 @@ class ClosingStateView(APIView):
         company = company_selectors.get_company(pk=company_id, user=request.user)
         data = services.get_closing_state(company=company)
         return Response(SimplifiedClosingStateSerializer(data).data)
+
+
+class LogicalExerciseListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="list_company_logical_exercises",
+        summary="List inferred logical fiscal exercises for a company",
+        responses={200: LogicalExerciseListSerializer},
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int) -> Response:
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        exercises = selectors.list_logical_exercises(company=company)
+        current = selectors.get_current_logical_exercise(company=company)
+        data = {
+            "company_id": company.id,
+            "company": company.name,
+            "current_exercise_id": current.exercise_id if current else None,
+            "exercises": [selectors.serialize_logical_exercise(exercise) for exercise in exercises],
+        }
+        return Response(LogicalExerciseListSerializer(data).data)
 
 
 class ClosingPreviewView(APIView):
@@ -78,3 +102,45 @@ class ClosingExecuteView(APIView):
             data=serializer.validated_data,
         )
         return Response(SimplifiedClosingExecuteSerializer(data).data)
+
+
+class LatestClosingSnapshotView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="get_latest_company_closing_snapshot",
+        summary="Get the latest immutable closing snapshot for a company",
+        responses={200: ClosingSnapshotSerializer},
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int) -> Response:
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        snapshot = selectors.get_latest_snapshot(company=company)
+        if snapshot is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("No closing snapshot exists for this company.")
+        data = services.serialize_snapshot(snapshot=snapshot)
+        return Response(ClosingSnapshotSerializer(data).data)
+
+
+class ClosingSnapshotDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="get_company_closing_snapshot",
+        summary="Get an immutable closing snapshot by ID",
+        responses={200: ClosingSnapshotSerializer},
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int, snapshot_id: int) -> Response:
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        from apps.closing.models import ClosingSnapshot
+        from rest_framework.exceptions import NotFound
+
+        try:
+            snapshot = selectors.get_snapshot(company=company, snapshot_id=snapshot_id)
+        except ClosingSnapshot.DoesNotExist as exc:
+            raise NotFound("Closing snapshot not found.") from exc
+        data = services.serialize_snapshot(snapshot=snapshot)
+        return Response(ClosingSnapshotSerializer(data).data)

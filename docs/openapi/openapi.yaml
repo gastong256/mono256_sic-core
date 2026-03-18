@@ -552,6 +552,28 @@ paths:
           description: Permission denied
         '409':
           description: Closing cannot be executed for the selected dates
+  /api/v1/companies/{company_id}/closing/latest-snapshot/:
+    get:
+      operationId: get_latest_company_closing_snapshot
+      summary: Get the latest immutable closing snapshot for a company
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClosingSnapshot'
+          description: ''
   /api/v1/companies/{company_id}/closing/preview/:
     post:
       operationId: preview_company_simplified_closing
@@ -584,6 +606,33 @@ paths:
           description: Permission denied
         '409':
           description: Closing cannot be prepared for the selected dates
+  /api/v1/companies/{company_id}/closing/snapshots/{snapshot_id}/:
+    get:
+      operationId: get_company_closing_snapshot
+      summary: Get an immutable closing snapshot by ID
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: snapshot_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClosingSnapshot'
+          description: ''
   /api/v1/companies/{company_id}/closing/state/:
     get:
       operationId: get_company_closing_state
@@ -764,6 +813,28 @@ paths:
         '409':
           description: Company not opened, already reversed, closed period, or read-only
             demo company
+  /api/v1/companies/{company_id}/logical-exercises/:
+    get:
+      operationId: list_company_logical_exercises
+      summary: List inferred logical fiscal exercises for a company
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogicalExerciseList'
+          description: ''
   /api/v1/companies/{company_id}/reports/journal-book/:
     get:
       operationId: get_journal_book
@@ -1846,6 +1917,75 @@ components:
       - next
       - previous
       - results
+    ClosingSnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        company:
+          type: string
+        patrimonial_closing_entry_id:
+          type: integer
+        reopening_entry_id:
+          type: integer
+        closing_date:
+          type: string
+          format: date
+        reopening_date:
+          type: string
+          format: date
+        balance_sheet:
+          type: object
+          additionalProperties: {}
+        income_statement:
+          type: object
+          additionalProperties: {}
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClosingSnapshotLine'
+      required:
+      - balance_sheet
+      - closing_date
+      - company
+      - company_id
+      - id
+      - income_statement
+      - lines
+      - patrimonial_closing_entry_id
+      - reopening_date
+      - reopening_entry_id
+    ClosingSnapshotLine:
+      type: object
+      properties:
+        account_id:
+          type: integer
+          nullable: true
+        account_code:
+          type: string
+        account_name:
+          type: string
+        account_type:
+          type: string
+        root_code:
+          type: string
+        parent_code:
+          type: string
+        debit_balance:
+          type: string
+        credit_balance:
+          type: string
+      required:
+      - account_code
+      - account_id
+      - account_name
+      - account_type
+      - credit_balance
+      - debit_balance
+      - parent_code
+      - root_code
     Company:
       type: object
       properties:
@@ -2491,6 +2631,61 @@ components:
           type: string
       required:
       - status
+    LogicalExercise:
+      type: object
+      properties:
+        exercise_id:
+          type: string
+        exercise_index:
+          type: integer
+        opening_entry_id:
+          type: integer
+        opening_source_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        closing_entry_id:
+          type: integer
+          nullable: true
+        closing_date:
+          type: string
+          format: date
+          nullable: true
+        snapshot_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+      required:
+      - closing_date
+      - closing_entry_id
+      - exercise_id
+      - exercise_index
+      - opening_entry_id
+      - opening_source_type
+      - snapshot_id
+      - start_date
+      - status
+    LogicalExerciseList:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company:
+          type: string
+        current_exercise_id:
+          type: string
+          nullable: true
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogicalExercise'
+      required:
+      - company
+      - company_id
+      - current_exercise_id
+      - exercises
     MeResponse:
       type: object
       properties:
@@ -2714,6 +2909,8 @@ components:
         books_closed_until:
           type: string
           format: date
+        snapshot_id:
+          type: integer
         created_entries:
           type: array
           items: {}
@@ -2724,6 +2921,7 @@ components:
       - company_id
       - created_entries
       - reopening_date
+      - snapshot_id
     SimplifiedClosingPreview:
       type: object
       properties:
@@ -2741,22 +2939,38 @@ components:
           type: string
           format: date
           nullable: true
+        active_exercise:
+          type: object
+          additionalProperties: {}
+        previous_exercises:
+          type: array
+          items: {}
         adjustments:
           type: object
           additionalProperties: {}
         result_summary:
           type: object
           additionalProperties: {}
+        balance_sheet:
+          type: object
+          additionalProperties: {}
+        income_statement:
+          type: object
+          additionalProperties: {}
         entries:
           type: object
           additionalProperties: {}
       required:
+      - active_exercise
       - adjustments
+      - balance_sheet
       - books_closed_until
       - closing_date
       - company
       - company_id
       - entries
+      - income_statement
+      - previous_exercises
       - reopening_date
       - result_summary
     SimplifiedClosingRequest:
@@ -2810,6 +3024,10 @@ components:
           type: string
           format: date
           nullable: true
+        current_exercise:
+          type: object
+          additionalProperties: {}
+          nullable: true
         can_close:
           type: boolean
       required:
@@ -2817,6 +3035,7 @@ components:
       - can_close
       - company
       - company_id
+      - current_exercise
       - last_patrimonial_closing_date
       - last_patrimonial_closing_entry_id
       - last_reopening_date

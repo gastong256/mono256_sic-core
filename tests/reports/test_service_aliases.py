@@ -40,7 +40,8 @@ class TestReportServiceAliases:
         ):
             report = journal_book.get_journal_book(company=company)
 
-        assert report is cached
+        assert report["cached"] is True
+        assert report["requested_date_to"] is not None
 
     def test_journal_book_returns_entries_only(self):
         owner = User.objects.create_user(username="owner-jb", password="x", role=User.Role.STUDENT)
@@ -78,7 +79,8 @@ class TestReportServiceAliases:
         ):
             report = ledger.get_ledger(company=company)
 
-        assert report is cached
+        assert report["cached"] is True
+        assert report["requested_date_to"] is not None
 
     def test_ledger_returns_accounts_only(self):
         owner = User.objects.create_user(
@@ -117,7 +119,8 @@ class TestReportServiceAliases:
         ):
             report = trial_balance.get_trial_balance(company=company)
 
-        assert report is cached
+        assert report["cached"] is True
+        assert report["requested_date_to"] is not None
 
     def test_trial_balance_returns_groups_only_and_grand_totals(self):
         owner = User.objects.create_user(
@@ -190,6 +193,35 @@ class TestReportServiceAliases:
                 "name": "Capital",
             },
         ]
+
+    def test_ledger_account_options_are_cached(self):
+        owner = User.objects.create_user(
+            username="owner-ledger-options-cache",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        parents = _seed_opening_chart()
+        company = company_services.create_company_with_optional_opening(
+            name="ACME Ledger Options Cache",
+            owner=owner,
+            opening_entry={
+                "date": "2026-03-16",
+                "assets": [
+                    {
+                        "name": "Caja Principal",
+                        "parent_code": parents["cash"].full_code,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+        )
+
+        with patch("apps.reports.services.ledger.report_cache.set_cached_report") as mock_set:
+            options = ledger.list_account_options(company=company)
+
+        assert options
+        assert mock_set.call_args.kwargs["report_name"] == "ledger_account_options"
+        assert mock_set.call_args.kwargs["company_id"] == company.id
 
     def test_reports_are_blocked_until_company_has_opening_entry(self, api_client: APIClient):
         owner = User.objects.create_user(
