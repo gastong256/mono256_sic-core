@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.9.1 (2026-03-18)
+
+### Bug Fixes
+
+- Expose explicit report ranges and optimize exercise-aware caching
+  ([`709cef7`](https://github.com/gastong256/mono256_sic-core/commit/709cef732caf9d21616a6576dbf6fb80a0d3a6fd))
+
+
 ## v0.9.0 (2026-03-18)
 
 ### Features
