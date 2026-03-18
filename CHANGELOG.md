@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.9.0 (2026-03-18)
+
+### Features
+
+- Add logical exercise-aware reports and immutable closing snapshots
+  ([`cf8dc48`](https://github.com/gastong256/mono256_sic-core/commit/cf8dc48220aab16deb103c7b7e2d1402c5ef39ab))
+
+
 ## v0.8.0 (2026-03-17)
 
 ### Features
