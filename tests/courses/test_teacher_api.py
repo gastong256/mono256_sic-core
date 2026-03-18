@@ -217,3 +217,36 @@ class TestTeacherCourseAggregatedEndpoints:
             ).is_visible
             is True
         )
+
+    def test_teacher_demo_company_list_hides_unpublished_demos(self, api_client: APIClient):
+        teacher = User.objects.create_user(
+            username="teacher-demo-hidden-list",
+            password="x",
+            role=User.Role.TEACHER,
+        )
+        course = Course.objects.create(name="Curso Demo Hidden", teacher=teacher)
+        demo_owner = User.objects.create_user(
+            username="demo-owner-hidden-list",
+            password="x",
+            role=User.Role.ADMIN,
+        )
+        demo_company = Company.objects.create(
+            name="Empresa Demo Oculta Global",
+            owner=demo_owner,
+            is_demo=True,
+            is_read_only=True,
+            is_published=False,
+        )
+
+        api_client.force_authenticate(teacher)
+        response = api_client.get(f"/api/v1/courses/{course.id}/demo-companies/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["demo_companies"] == []
+
+        patch_response = api_client.patch(
+            f"/api/v1/courses/{course.id}/demo-companies/{demo_company.id}/",
+            {"is_visible": True},
+            format="json",
+        )
+        assert patch_response.status_code == status.HTTP_404_NOT_FOUND

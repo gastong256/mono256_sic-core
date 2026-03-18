@@ -43,6 +43,28 @@ class Company(TimeStampedModel):
         verbose_name="is read only",
         help_text="If true, accounting writes and metadata updates are blocked.",
     )
+    is_published = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name="is published",
+        help_text="Controls whether a demo company is globally visible in the application.",
+    )
+    demo_slug = models.SlugField(
+        max_length=120,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="demo slug",
+        help_text="Stable slug for imported demo companies.",
+    )
+    demo_content_sha256 = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="demo content sha256",
+        help_text="Canonical content hash used to avoid importing the same demo twice.",
+    )
 
     class Meta:
         verbose_name = "company"

@@ -173,10 +173,13 @@ def get_teacher_student_context(*, user: User, student_id: int) -> dict:
     }
 
 
-def list_course_demo_companies(*, course: Course) -> list[dict]:
+def list_course_demo_companies(*, course: Course, user: User) -> list[dict]:
+    demo_qs = Company.objects.filter(is_demo=True)
+    if user.role != User.Role.ADMIN:
+        demo_qs = demo_qs.filter(is_published=True)
+
     demo_companies = list(
-        Company.objects.filter(is_demo=True)
-        .select_related("owner")
+        demo_qs.select_related("owner")
         .annotate(
             account_count=Count("accounts", distinct=True),
             journal_entry_count=Count("journal_entries", distinct=True),
@@ -197,6 +200,8 @@ def list_course_demo_companies(*, course: Course) -> list[dict]:
             "company_name": company.name,
             "is_demo": company.is_demo,
             "is_read_only": company.is_read_only,
+            "is_published": company.is_published,
+            "demo_slug": company.demo_slug,
             "is_visible": bool(visibility_by_company_id.get(company.id, False)),
             "account_count": int(getattr(company, "account_count", 0)),
             "journal_entry_count": int(getattr(company, "journal_entry_count", 0)),

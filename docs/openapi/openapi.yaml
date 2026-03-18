@@ -1213,6 +1213,40 @@ paths:
           description: Permission denied
         '409':
           description: Company has protected accounting records
+  /api/v1/companies/{id}/demo-publication/:
+    patch:
+      operationId: set_demo_company_publication
+      summary: Publish or unpublish a demo company
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this company.
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDemoPublication'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+        '400':
+          description: Validation error
+        '403':
+          description: Admin role required
+        '404':
+          description: Company not found
   /api/v1/companies/{id}/opening-entry/:
     post:
       operationId: create_company_opening_entry
@@ -2022,6 +2056,16 @@ components:
           type: boolean
           readOnly: true
           description: If true, accounting writes and metadata updates are blocked.
+        is_published:
+          type: boolean
+          readOnly: true
+          description: Controls whether a demo company is globally visible in the
+            application.
+        demo_slug:
+          type: string
+          readOnly: true
+          description: Stable slug for imported demo companies.
+          pattern: ^[-a-zA-Z0-9_]+$
         has_opening_entry:
           type: boolean
           readOnly: true
@@ -2045,9 +2089,11 @@ components:
       - accounting_ready
       - books_closed_until
       - created_at
+      - demo_slug
       - has_opening_entry
       - id
       - is_demo
+      - is_published
       - is_read_only
       - name
       - opening_entry_id
@@ -2150,6 +2196,16 @@ components:
           type: boolean
           readOnly: true
           description: If true, accounting writes and metadata updates are blocked.
+        is_published:
+          type: boolean
+          readOnly: true
+          description: Controls whether a demo company is globally visible in the
+            application.
+        demo_slug:
+          type: string
+          readOnly: true
+          description: Stable slug for imported demo companies.
+          pattern: ^[-a-zA-Z0-9_]+$
         has_opening_entry:
           type: boolean
           readOnly: true
@@ -2158,9 +2214,11 @@ components:
           readOnly: true
       required:
       - accounting_ready
+      - demo_slug
       - has_opening_entry
       - id
       - is_demo
+      - is_published
       - is_read_only
       - name
       - owner_username
@@ -2232,6 +2290,10 @@ components:
           type: boolean
         is_read_only:
           type: boolean
+        is_published:
+          type: boolean
+        demo_slug:
+          type: string
         is_visible:
           type: boolean
         account_count:
@@ -2242,7 +2304,9 @@ components:
       - account_count
       - company_id
       - company_name
+      - demo_slug
       - is_demo
+      - is_published
       - is_read_only
       - is_visible
       - journal_entry_count
@@ -2829,6 +2893,13 @@ components:
         teacher_id:
           type: integer
           minimum: 1
+    PatchedDemoPublication:
+      type: object
+      properties:
+        is_published:
+          type: boolean
+          description: Whether the demo company should be globally visible in the
+            application.
     PatchedUserRoleUpdate:
       type: object
       properties:

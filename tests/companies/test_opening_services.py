@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import PermissionDenied
 
 from config.exceptions import ConflictError
 from apps.companies import services as company_services
@@ -93,7 +93,7 @@ class TestCompanyOpeningServices:
             == 1
         )
 
-    def test_opening_rejects_account_name_that_belongs_to_another_company(self):
+    def test_opening_creates_distinct_company_account_when_name_exists_in_other_company(self):
         owner_a = User.objects.create_user(
             username="student-owner-a",
             password="x",
@@ -116,21 +116,29 @@ class TestCompanyOpeningServices:
         )
         CompanyAccount.objects.create(company=company_a, account=existing)
 
-        with pytest.raises(ValidationError):
-            company_services.create_company_opening_entry(
-                company=company_b,
-                actor=owner_b,
-                opening_entry={
-                    "date": datetime.date(2026, 3, 1),
-                    "assets": [
-                        {
-                            "name": "Caja Principal",
-                            "parent_code": parents["cash"].full_code,
-                            "amount": "100.00",
-                        }
-                    ],
-                },
-            )
+        company_services.create_company_opening_entry(
+            company=company_b,
+            actor=owner_b,
+            opening_entry={
+                "date": datetime.date(2026, 3, 1),
+                "assets": [
+                    {
+                        "name": "Caja Principal",
+                        "parent_code": parents["cash"].full_code,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+        )
+
+        company_b_accounts = list(
+            CompanyAccount.objects.filter(company=company_b, account__name="Caja Principal")
+            .select_related("account")
+            .order_by("account__id")
+        )
+
+        assert len(company_b_accounts) == 1
+        assert company_b_accounts[0].account_id != existing.id
 
     def test_opening_requires_owner_or_admin(self):
         teacher = User.objects.create_user(

@@ -57,6 +57,8 @@ class TestDemoCompanyAccessAndReadOnly:
                 "owner_username": demo_owner.username,
                 "is_demo": True,
                 "is_read_only": True,
+                "is_published": True,
+                "demo_slug": "",
                 "has_opening_entry": False,
                 "accounting_ready": False,
             }
@@ -118,6 +120,7 @@ class TestDemoCompanyAccessAndReadOnly:
         assert admin_response.status_code == status.HTTP_200_OK
         assert admin_response.json()["is_demo"] is True
         assert admin_response.json()["is_read_only"] is True
+        assert admin_response.json()["is_published"] is True
 
     def test_demo_company_blocks_company_account_and_journal_writes(
         self,
@@ -195,3 +198,78 @@ class TestDemoCompanyAccessAndReadOnly:
             format="json",
         )
         assert journal_response.status_code == status.HTTP_409_CONFLICT
+
+    def test_unpublished_demo_is_hidden_from_teacher_and_student_but_visible_to_admin(
+        self,
+        api_client: APIClient,
+    ):
+        demo_owner = User.objects.create_user(
+            username="demo-owner-unpublished",
+            password="x",
+            role=User.Role.ADMIN,
+        )
+        teacher = User.objects.create_user(
+            username="teacher-unpublished-demo",
+            password="x",
+            role=User.Role.TEACHER,
+        )
+        student = User.objects.create_user(
+            username="student-unpublished-demo",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        course = create_course(teacher=teacher, name="Curso Demo Oculta")
+        enroll_student(course=course, student=student)
+        demo_company = Company.objects.create(
+            name="Empresa Demo No Publicada",
+            owner=demo_owner,
+            is_demo=True,
+            is_read_only=True,
+            is_published=False,
+        )
+        CourseDemoCompanyVisibility.objects.create(
+            course=course,
+            company=demo_company,
+            is_visible=True,
+        )
+
+        api_client.force_authenticate(teacher)
+        teacher_response = api_client.get("/api/v1/companies/?all=true&summary=selector")
+        assert teacher_response.status_code == status.HTTP_200_OK
+        assert teacher_response.json()["results"] == []
+
+        api_client.force_authenticate(student)
+        student_response = api_client.get("/api/v1/companies/?all=true&summary=selector")
+        assert student_response.status_code == status.HTTP_200_OK
+        assert student_response.json()["results"] == []
+
+        api_client.force_authenticate(demo_owner)
+        admin_response = api_client.get("/api/v1/companies/?all=true&summary=selector")
+        assert admin_response.status_code == status.HTTP_200_OK
+        assert admin_response.json()["results"][0]["id"] == demo_company.id
+
+    def test_admin_can_toggle_demo_publication(self, api_client: APIClient):
+        admin = User.objects.create_user(
+            username="demo-admin-publish",
+            password="x",
+            role=User.Role.ADMIN,
+        )
+        demo_company = Company.objects.create(
+            name="Empresa Demo Publicable",
+            owner=admin,
+            is_demo=True,
+            is_read_only=True,
+            is_published=False,
+        )
+
+        api_client.force_authenticate(admin)
+        response = api_client.patch(
+            f"/api/v1/companies/{demo_company.id}/demo-publication/",
+            {"is_published": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        demo_company.refresh_from_db()
+        assert demo_company.is_published is True
+        assert response.json()["is_published"] is True

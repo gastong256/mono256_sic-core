@@ -15,6 +15,7 @@
 - [Quickstart](#quickstart)
 - [Installation and Configuration](#installation-and-configuration)
 - [Loading the Chart of Accounts](#loading-the-chart-of-accounts)
+- [Loading Demo Companies](#loading-demo-companies)
 - [API Reference](#api-reference)
   - [Authentication](#authentication)
   - [Companies](#companies)
@@ -155,6 +156,179 @@ Account codes use the hordak/MPTT local code convention:
 - Level-0 root code: `"1"`, `"2"`, … → `full_code = "1"`, `"2"`, …
 - Level-1 local code: `".01"`, `".02"`, … → `full_code = "1.01"`, `"1.02"`, …
 - Level-2 local code: `".01"`, `".02"`, … → `full_code = "1.04.01"`, `"2.01.03"`, …
+
+---
+
+## Loading Demo Companies
+
+SIC can import a full read-only demo company from:
+
+- a local JSON file
+- a full URL
+- an R2/public bucket URL + object key
+
+The import is **idempotent by content**:
+
+- the payload is canonicalized as JSON
+- a SHA-256 hash is computed
+- if a demo company with the same `demo_content_sha256` already exists, the import is skipped
+
+Imported demos are marked:
+
+- `is_demo=true`
+- `is_read_only=true`
+- `demo_slug=<derived from name>`
+
+If another demo with the same base name is imported later, the slug is versioned:
+
+- `empresa-demo`
+- `empresa-demo-v2`
+- `empresa-demo-v3`
+
+### Demo JSON expectations
+
+The payload currently supports:
+
+- company metadata: `name`, `description`, `tax_id`
+- `opening_entry`
+- `logical_exercises`, where each item contains:
+  - `journal_entries`
+  - optional `closing`
+- optional `is_published`
+
+Canonical rules:
+
+- `opening_entry` is required
+- `logical_exercises` is required and must be non-empty
+- root `journal_entries` and root `closing` are not supported
+- every exercise except the last one must include `closing`
+- the next logical exercise starts automatically with the `REOPENING` created by the previous close
+- entries inside each exercise must be ordered by ascending date
+- entries cannot appear after that exercise's `closing_date`
+- invalid demos are skipped with a warning and do not write partial data to the DB
+
+### Manual import examples
+
+From a file:
+
+```bash
+uv run python manage.py load_chart_of_accounts
+uv run python manage.py load_demo_company --file data/demo/demo.json --publish
+```
+
+From a full URL:
+
+```bash
+uv run python manage.py load_demo_company \
+  --url https://example.com/demo.json \
+  --owner-username demo_owner \
+  --publish
+```
+
+From R2/custom domain:
+
+```bash
+uv run python manage.py load_demo_company \
+  --r2-base-url https://pub.example.r2.dev \
+  --r2-key demo.json \
+  --owner-username demo_owner \
+  --publish
+```
+
+### Canonical demo shape
+
+All demos, simple or complex, must use this structure:
+
+```json
+{
+  "name": "Empresa Demo",
+  "description": "Demo con múltiples ejercicios lógicos.",
+  "tax_id": "30-12345678-9",
+  "is_published": true,
+  "opening_entry": {
+    "date": "2025-01-01",
+    "inventory_kind": "INITIAL",
+    "source_ref": "DEMO-OPEN-2025",
+    "assets": [
+      { "name": "Caja Principal", "parent_code": "1.01", "amount": "1000.00" }
+    ],
+    "liabilities": []
+  },
+  "logical_exercises": [
+    {
+      "journal_entries": [
+        {
+          "date": "2025-03-10",
+          "description": "Venta demo",
+          "source_type": "MANUAL",
+          "source_ref": "DEMO-2025-001",
+          "lines": [
+            { "parent_code": "1.01", "name": "Caja Principal", "type": "DEBIT", "amount": "300.00" },
+            { "parent_code": "5.01", "name": "Ventas Mostrador", "type": "CREDIT", "amount": "300.00" }
+          ]
+        }
+      ],
+      "closing": {
+        "closing_date": "2025-12-31",
+        "reopening_date": "2026-01-01",
+        "cash_actual": "1280.00",
+        "inventory_actual": "470.00"
+      }
+    },
+    {
+      "journal_entries": [
+        {
+          "date": "2026-02-15",
+          "description": "Venta demo segundo ejercicio",
+          "source_type": "MANUAL",
+          "source_ref": "DEMO-2026-001",
+          "lines": [
+            { "parent_code": "1.01", "name": "Caja Principal", "type": "DEBIT", "amount": "220.00" },
+            { "parent_code": "5.01", "name": "Ventas Mostrador", "type": "CREDIT", "amount": "220.00" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Startup/deploy import
+
+For one-shot deploy bootstrap (for example on Render Free), enable:
+
+```bash
+LOAD_DEMO_ON_START=true
+DEMO_IMPORT_PROVIDER=r2
+DEMO_IMPORT_R2_BASE_URL=https://pub.example.r2.dev
+DEMO_IMPORT_KEY=demo.json
+DEMO_OWNER_USERNAME=demo_owner
+DEMO_PUBLISH_ON_IMPORT=true
+```
+
+Then deploy once, confirm the demo was imported, and turn `LOAD_DEMO_ON_START` back to `false`.
+
+### Demo publication
+
+Imported demos can stay in the database while admins decide whether they are globally visible.
+
+- `admin` can see all demos, published or not
+- `teacher` and `student` only see published demos
+- students still require course-level demo visibility on top of publication
+
+Admin publication toggle:
+
+```http
+PATCH /api/v1/companies/{id}/demo-publication/
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "is_published": false
+}
+```
+
+This lets you import a newer demo, publish it, and later hide the older one without deleting it.
 
 ---
 

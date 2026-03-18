@@ -16,6 +16,14 @@ services:
       DB_CONN_HEALTH_CHECKS: ${DB_CONN_HEALTH_CHECKS_PROD:-true}
       DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT_PROD:-5}
       LOAD_CHART_ON_START: ${LOAD_CHART_ON_START_PROD:-false}
+      LOAD_DEMO_ON_START: ${LOAD_DEMO_ON_START_PROD:-false}
+      DEMO_IMPORT_PROVIDER: ${DEMO_IMPORT_PROVIDER_PROD:-r2}
+      DEMO_IMPORT_R2_BASE_URL: ${DEMO_IMPORT_R2_BASE_URL_PROD:-}
+      DEMO_IMPORT_KEY: ${DEMO_IMPORT_KEY_PROD:-demo.json}
+      DEMO_IMPORT_URL: ${DEMO_IMPORT_URL_PROD:-}
+      DEMO_IMPORT_FILE: ${DEMO_IMPORT_FILE_PROD:-}
+      DEMO_OWNER_USERNAME: ${DEMO_OWNER_USERNAME_PROD:-demo_owner}
+      DEMO_PUBLISH_ON_IMPORT: ${DEMO_PUBLISH_ON_IMPORT_PROD:-true}
     command: ["/app/scripts/run_migrations.sh"]
     depends_on:
       postgres:
@@ -55,6 +63,7 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS_PROD:-false}
       ENABLE_EXAMPLE_API: ${ENABLE_EXAMPLE_API_PROD:-false}
       LOAD_CHART_ON_START: ${LOAD_CHART_ON_START_PROD:-false}
+      LOAD_DEMO_ON_START: ${LOAD_DEMO_ON_START_PROD:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully

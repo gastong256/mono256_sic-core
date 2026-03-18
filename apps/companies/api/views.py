@@ -12,10 +12,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.common.pagination import paginate_queryset
+from apps.common.permissions import IsAdminRole
 from apps.common.query_params import is_truthy_param
 from apps.companies import selectors, services
 from apps.companies.api.serializers import (
     CompanyCreateSerializer,
+    DemoPublicationSerializer,
     CompanyOpeningEntrySerializer,
     CompanySelectorSerializer,
     CompanySerializer,
@@ -215,3 +217,38 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return Response(
             JournalEntryDetailSerializer(entry_with_lines).data, status=status.HTTP_201_CREATED
         )
+
+    @extend_schema(
+        operation_id="set_demo_company_publication",
+        summary="Publish or unpublish a demo company",
+        request=DemoPublicationSerializer,
+        responses={
+            200: CompanySerializer,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Admin role required"),
+            404: OpenApiResponse(description="Company not found"),
+        },
+        tags=["companies"],
+    )
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path="demo-publication",
+        permission_classes=[IsAuthenticated, IsAdminRole],
+    )
+    def demo_publication(self, request: Request, pk: str | None = None) -> Response:
+        company = self.get_object()
+        serializer = DemoPublicationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        company = services.set_demo_publication(
+            company=company,
+            is_published=serializer.validated_data["is_published"],
+        )
+        logger.info(
+            "demo_company_publication_updated",
+            company_id=company.pk,
+            is_published=company.is_published,
+            actor=request.user.username,
+        )
+        return Response(CompanySerializer(company).data)

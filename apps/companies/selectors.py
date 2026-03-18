@@ -40,12 +40,14 @@ def list_companies(*, user) -> QuerySet[Company]:
         from apps.courses.selectors import student_ids_for_teacher
 
         enrolled_ids = student_ids_for_teacher(teacher=user)
-        return base_qs.filter(Q(is_demo=True) | Q(owner=user) | Q(owner_id__in=enrolled_ids))
+        return base_qs.filter(
+            Q(is_demo=True, is_published=True) | Q(owner=user) | Q(owner_id__in=enrolled_ids)
+        )
 
     demo_ids = _visible_demo_company_ids_for_student(student=user)
     student_filter = Q(owner=user, is_demo=False)
     if demo_ids:
-        student_filter |= Q(is_demo=True, id__in=demo_ids)
+        student_filter |= Q(is_demo=True, is_published=True, id__in=demo_ids)
     return base_qs.filter(student_filter)
 
 
@@ -60,10 +62,16 @@ def get_company(*, pk: int, user) -> Company:
 
     if company.is_demo:
         if user.role == User.Role.TEACHER:
-            return company
-        if user.role == User.Role.STUDENT and _student_can_access_demo_company(
-            student=user,
-            company=company,
+            if company.is_published:
+                return company
+            raise PermissionDenied(detail="You do not have permission to access this company.")
+        if (
+            user.role == User.Role.STUDENT
+            and _student_can_access_demo_company(
+                student=user,
+                company=company,
+            )
+            and company.is_published
         ):
             return company
         raise PermissionDenied(detail="You do not have permission to access this company.")

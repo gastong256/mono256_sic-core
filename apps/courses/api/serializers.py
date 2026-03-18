@@ -227,6 +227,8 @@ class CourseDemoCompanyVisibilitySerializer(serializers.Serializer):
     company_name = serializers.CharField()
     is_demo = serializers.BooleanField()
     is_read_only = serializers.BooleanField()
+    is_published = serializers.BooleanField()
+    demo_slug = serializers.CharField(allow_blank=True)
     is_visible = serializers.BooleanField()
     account_count = serializers.IntegerField()
     journal_entry_count = serializers.IntegerField()

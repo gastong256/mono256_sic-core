@@ -37,6 +37,14 @@ Recommended:
 - `RUN_MIGRATIONS_ON_START=true` (useful for platforms without pre-deploy hooks)
 - `COLLECTSTATIC_ON_MIGRATE=true`
 - `LOAD_CHART_ON_START=false` (set `true` only for initial chart bootstrap)
+- `LOAD_DEMO_ON_START=false` (set `true` only for a one-shot demo bootstrap)
+- `DEMO_IMPORT_PROVIDER=r2` (`r2`, `url`, or `file`)
+- `DEMO_IMPORT_R2_BASE_URL=` (required when provider is `r2`)
+- `DEMO_IMPORT_KEY=demo.json` (defaults to `demo.json`)
+- `DEMO_IMPORT_URL=` (required when provider is `url`)
+- `DEMO_IMPORT_FILE=` (required when provider is `file`)
+- `DEMO_OWNER_USERNAME=demo_owner`
+- `DEMO_PUBLISH_ON_IMPORT=true`
 
 ## 3. Deployment Procedure
 
@@ -73,7 +81,35 @@ Recommended:
 - Pre-deploy should run `collectstatic` so `/static/` is materialized in the container.
 - For first bootstrap only, optionally set:
   - `LOAD_CHART_ON_START_PROD=true`
+- For a one-shot demo bootstrap, optionally set:
+  - `LOAD_DEMO_ON_START_PROD=true`
+  - `DEMO_IMPORT_PROVIDER_PROD=r2`
+  - `DEMO_IMPORT_R2_BASE_URL_PROD=https://pub.example.r2.dev`
+  - `DEMO_IMPORT_KEY_PROD=demo.json`
 - Keep `LOAD_CHART_ON_START_PROD=false` for normal deployments.
+- Keep `LOAD_DEMO_ON_START_PROD=false` for normal deployments.
+
+## 4.1 Demo Import Procedure
+
+Recommended flow:
+
+1. Upload the official demo JSON to the chosen source.
+2. Set the import env vars for one deploy only.
+3. Deploy and watch the `migrate` service logs.
+4. Confirm the import result:
+   - a new demo is created when the payload SHA-256 is new
+   - import is skipped when an identical payload was already imported
+5. Turn `LOAD_DEMO_ON_START_PROD` back to `false`.
+6. Use the admin publication endpoint to publish/unpublish demos without deleting them.
+
+Important behaviors:
+
+- Demo imports are content-addressed by `demo_content_sha256`.
+- The imported company becomes `is_demo=true` and `is_read_only=true`.
+- Demo slugs are derived from the payload name and versioned on collisions (`slug`, `slug-v2`, `slug-v3`, ...).
+- Publication is global and separate from course-level demo visibility.
+- The import command only accepts the canonical `opening_entry + logical_exercises` format.
+- If a demo payload is structurally invalid or breaks accounting/logical-exercise rules, the import is skipped with a warning and the deploy continues.
 
 Manual migration (outside compose) if needed:
 

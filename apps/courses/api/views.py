@@ -588,7 +588,10 @@ class CourseDemoCompanyVisibilityListView(APIView):
         payload = {
             "course_id": course.id,
             "course_name": course.name,
-            "demo_companies": selectors.list_course_demo_companies(course=course),
+            "demo_companies": selectors.list_course_demo_companies(
+                course=course,
+                user=request.user,
+            ),
         }
         return Response(payload)
 
@@ -608,6 +611,8 @@ class CourseDemoCompanyVisibilityDetailView(APIView):
             company = Company.objects.get(pk=company_id, is_demo=True)
         except Company.DoesNotExist as exc:
             raise NotFound("Demo company not found.") from exc
+        if request.user.role != User.Role.ADMIN and not company.is_published:
+            raise NotFound("Demo company not found.")
 
         serializer = CourseDemoCompanyVisibilityUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -619,7 +624,7 @@ class CourseDemoCompanyVisibilityDetailView(APIView):
         )
         payload = next(
             item
-            for item in selectors.list_course_demo_companies(course=course)
+            for item in selectors.list_course_demo_companies(course=course, user=request.user)
             if item["company_id"] == company.id
         )
         logger.info(

@@ -31,6 +31,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "books_closed_until",
             "is_demo",
             "is_read_only",
+            "is_published",
+            "demo_slug",
             "has_opening_entry",
             "accounting_ready",
             "opening_entry_id",
@@ -44,6 +46,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "books_closed_until",
             "is_demo",
             "is_read_only",
+            "is_published",
+            "demo_slug",
             "has_opening_entry",
             "accounting_ready",
             "opening_entry_id",
@@ -216,6 +220,8 @@ class CompanySelectorSerializer(serializers.ModelSerializer):
             "owner_username",
             "is_demo",
             "is_read_only",
+            "is_published",
+            "demo_slug",
             "has_opening_entry",
             "accounting_ready",
         ]
@@ -235,3 +241,9 @@ class CompanySelectorListSerializer(serializers.Serializer):
     next = serializers.CharField(allow_null=True)
     previous = serializers.CharField(allow_null=True)
     results = CompanySelectorSerializer(many=True)
+
+
+class DemoPublicationSerializer(serializers.Serializer):
+    is_published = serializers.BooleanField(
+        help_text="Whether the demo company should be globally visible in the application."
+    )
