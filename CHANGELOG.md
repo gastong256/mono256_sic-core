@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.10.0 (2026-03-18)
+
+### Features
+
+- Enforce canonical demo validation and R2-backed demo loading
+  ([`ba10327`](https://github.com/gastong256/mono256_sic-core/commit/ba10327b4e5944e33ed16ce0f96c697e9b6a795c))
+
+
 ## v0.9.1 (2026-03-18)
 
 ### Bug Fixes
