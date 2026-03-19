@@ -16,6 +16,7 @@
 - [Installation and Configuration](#installation-and-configuration)
 - [Loading the Chart of Accounts](#loading-the-chart-of-accounts)
 - [Loading Demo Companies](#loading-demo-companies)
+- [Documentation Map](#documentation-map)
 - [Functional Scope](#functional-scope)
 - [API Reference](#api-reference)
   - [Authentication](#authentication)
@@ -330,6 +331,30 @@ Content-Type: application/json
 ```
 
 This lets you import a newer demo, publish it, and later hide the older one without deleting it.
+
+---
+
+## Documentation Map
+
+Core project documentation:
+
+- [docs/architecture.md](/home/gastong256/projects/mono256_sic-core/docs/architecture.md)
+- [docs/accounting-rules.md](/home/gastong256/projects/mono256_sic-core/docs/accounting-rules.md)
+- [docs/development.md](/home/gastong256/projects/mono256_sic-core/docs/development.md)
+- [docs/testing.md](/home/gastong256/projects/mono256_sic-core/docs/testing.md)
+- [docs/security.md](/home/gastong256/projects/mono256_sic-core/docs/security.md)
+- [docs/release-process.md](/home/gastong256/projects/mono256_sic-core/docs/release-process.md)
+- [docs/production-readiness.md](/home/gastong256/projects/mono256_sic-core/docs/production-readiness.md)
+- [docs/frontend-integration.md](/home/gastong256/projects/mono256_sic-core/docs/frontend-integration.md)
+- [docs/glossary.md](/home/gastong256/projects/mono256_sic-core/docs/glossary.md)
+- [CONTRIBUTING.md](/home/gastong256/projects/mono256_sic-core/CONTRIBUTING.md)
+
+Operational and product planning documents:
+
+- [docs/operations.md](/home/gastong256/projects/mono256_sic-core/docs/operations.md)
+- [docs/observability.md](/home/gastong256/projects/mono256_sic-core/docs/observability.md)
+- [docs/sic1-compliance.md](/home/gastong256/projects/mono256_sic-core/docs/sic1-compliance.md)
+- [docs/backlog.md](/home/gastong256/projects/mono256_sic-core/docs/backlog.md)
 
 ---
 
