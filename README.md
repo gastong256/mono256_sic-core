@@ -16,6 +16,7 @@
 - [Installation and Configuration](#installation-and-configuration)
 - [Loading the Chart of Accounts](#loading-the-chart-of-accounts)
 - [Loading Demo Companies](#loading-demo-companies)
+- [Functional Scope](#functional-scope)
 - [API Reference](#api-reference)
   - [Authentication](#authentication)
   - [Companies](#companies)
@@ -329,6 +330,29 @@ Content-Type: application/json
 ```
 
 This lets you import a newer demo, publish it, and later hide the older one without deleting it.
+
+---
+
+## Functional Scope
+
+SIC already covers the strongest accounting core for an educational simulation:
+
+- opening entry
+- double-entry posting
+- journal book
+- ledger
+- trial balance
+- simplified closing
+- reopening
+- inferred logical exercises
+- immutable closing snapshots
+
+At the same time, the project is still evolving toward broader SIC 1 coverage.
+
+Current status and rationale:
+
+- [SIC 1 compliance assessment](docs/sic1-compliance.md)
+- [Product backlog and next sprint candidates](docs/backlog.md)
 
 ---
 
