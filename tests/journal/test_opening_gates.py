@@ -14,6 +14,52 @@ from tests.support.opening import create_legacy_journal_entry, seed_opening_char
 
 @pytest.mark.django_db
 class TestOpeningGates:
+    def test_journal_list_returns_most_recent_entries_first(self, api_client: APIClient):
+        student = User.objects.create_user(
+            username="student-journal-desc",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        parents = seed_opening_chart()
+        company = company_services.create_company_with_optional_opening(
+            name="Empresa Orden Diario",
+            owner=student,
+            opening_entry={
+                "date": datetime.date(2026, 3, 1),
+                "assets": [
+                    {
+                        "name": "Caja Principal",
+                        "parent_code": parents["cash"].full_code,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+        )
+        operating_account = (
+            company.accounts.exclude(account__parent__full_code="3.01").get().account
+        )
+
+        for entry_number, entry_date, description in [
+            (2, datetime.date(2026, 3, 2), "Asiento 2"),
+            (3, datetime.date(2026, 3, 3), "Asiento 3"),
+        ]:
+            manual = JournalEntry.objects.create(
+                company=company,
+                entry_number=entry_number,
+                date=entry_date,
+                description=description,
+                source_type=JournalEntry.SourceType.MANUAL,
+                created_by=student,
+            )
+            manual.lines.create(account=operating_account, type="DEBIT", amount="10.00")
+            manual.lines.create(account=operating_account, type="CREDIT", amount="10.00")
+
+        api_client.force_authenticate(student)
+        response = api_client.get(f"/api/v1/companies/{company.id}/journal/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [item["entry_number"] for item in response.data["results"]] == [3, 2, 1]
+
     def test_journal_detail_is_blocked_until_company_has_opening(self, api_client: APIClient):
         student = User.objects.create_user(
             username="student-journal-detail-gate",

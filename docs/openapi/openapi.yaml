@@ -658,8 +658,8 @@ paths:
   /api/v1/companies/{company_id}/journal/:
     get:
       operationId: list_journal_entries
-      description: Returns paginated journal entries for the company ordered by entry
-        number.
+      description: Returns paginated journal entries for the company ordered by
+        most recent entry number first.
       summary: List journal entries
       parameters:
       - in: path

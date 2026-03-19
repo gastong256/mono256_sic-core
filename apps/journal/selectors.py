@@ -29,7 +29,7 @@ def list_journal_entries(*, company: Company) -> QuerySet[JournalEntry]:
     base_qs = (
         JournalEntry.objects.filter(company=company)
         .select_related("created_by", "reversal_of", "reversed_by")
-        .order_by("entry_number")
+        .order_by("-entry_number")
     )
     return _with_totals(base_qs)
 
