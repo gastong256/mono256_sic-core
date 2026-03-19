@@ -43,7 +43,12 @@ Accounting signals:
 
 This repository is not the whole operational picture.
 
-There is also a companion ops repository used for automation such as:
+There is also a companion ops repository used for automation:
+
+- `mono256_sic-ops`
+- `https://github.com/gastong256/mono256_sic-ops`
+
+It covers workflows such as:
 
 - database backups
 - keep-alive and health automation
@@ -55,7 +60,7 @@ There is also a companion ops repository used for automation such as:
 This split is intentional:
 
 - this repo documents application behavior
-- the ops repo handles environment automation
+- `mono256_sic-ops` handles environment automation
 
 ## First-Stage Success Criteria
 

@@ -2,6 +2,13 @@
 
 This document defines the minimum operational procedures for running SIC in production.
 
+Operational automation that lives outside this repository is currently tracked in:
+
+- `mono256_sic-ops`
+- `https://github.com/gastong256/mono256_sic-ops`
+
+This runbook focuses on application/runtime behavior for `mono256_sic-core`.
+
 ## 1. Runtime Prerequisites
 
 - A PostgreSQL instance reachable by `DATABASE_URL`.

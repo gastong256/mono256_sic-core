@@ -139,11 +139,16 @@ Current rules:
 
 Production operations are intentionally kept lean inside this repo.
 
-The project also relies on an external companion ops repository for automation such as:
+The project also relies on an external companion ops repository:
+
+- `mono256_sic-ops`
+- `https://github.com/gastong256/mono256_sic-ops`
+
+That repository handles automation such as:
 
 - backups
 - keep-alive / uptime support
 - alerting
 - weekly operational reporting
 
-This repo documents application behavior, while external operational automation can evolve independently.
+This repo documents application behavior, while `mono256_sic-ops` handles operational automation and can evolve independently.
