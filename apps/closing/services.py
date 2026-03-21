@@ -307,6 +307,22 @@ def _aggregate_parent_balance(
     return debit, credit, debit - credit
 
 
+def _serialize_parent_book_balance(
+    *, balances: dict[str, BalanceNode], parent_code: str, parent_name: str
+) -> dict:
+    total_debit, total_credit, book_balance = _aggregate_parent_balance(
+        balances=balances,
+        parent_code=parent_code,
+    )
+    return {
+        "parent_code": parent_code,
+        "parent_name": parent_name,
+        "total_debit": f"{total_debit:.2f}",
+        "total_credit": f"{total_credit:.2f}",
+        "book_balance": f"{book_balance:.2f}",
+    }
+
+
 def _validate_patrimonial_natural_balances(*, balances: dict[str, BalanceNode]) -> None:
     grouped: dict[tuple[str, str], tuple[Decimal, Decimal]] = {}
     for node in balances.values():
@@ -1041,6 +1057,37 @@ def get_closing_state(*, company: Company) -> dict:
             and current_exercise.status == "open"
             and company_has_opening_entry(company=company)
             and not company.is_read_only
+        ),
+    }
+
+
+def get_current_book_balances(*, company: Company, date_to: datetime.date | None = None) -> dict:
+    assert_company_accounting_ready(company=company)
+
+    latest_entry_date = (
+        company.journal_entries.order_by("-date", "-entry_number")
+        .values_list("date", flat=True)
+        .first()
+    )
+    actual_date_to = date_to or latest_entry_date or datetime.date.today()
+    balances = _load_balance_nodes(company=company, date_to=actual_date_to)
+
+    return {
+        "company_id": company.id,
+        "company": company.name,
+        "as_of_date": str(actual_date_to),
+        "books_closed_until": (
+            str(company.books_closed_until) if company.books_closed_until else None
+        ),
+        "cash": _serialize_parent_book_balance(
+            balances=balances,
+            parent_code="1.01",
+            parent_name="Caja",
+        ),
+        "inventory": _serialize_parent_book_balance(
+            balances=balances,
+            parent_code="1.09",
+            parent_name="Mercaderías",
         ),
     }
 

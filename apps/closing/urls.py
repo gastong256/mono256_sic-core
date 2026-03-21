@@ -5,6 +5,7 @@ from apps.closing.api.views import (
     ClosingPreviewView,
     ClosingSnapshotDetailView,
     ClosingStateView,
+    CurrentBookBalancesView,
     LatestClosingSnapshotView,
     LogicalExerciseListView,
 )
@@ -21,6 +22,11 @@ urlpatterns = [
         "companies/<int:company_id>/closing/state/",
         ClosingStateView.as_view(),
         name="state",
+    ),
+    path(
+        "companies/<int:company_id>/closing/current-balances/",
+        CurrentBookBalancesView.as_view(),
+        name="current-balances",
     ),
     path(
         "companies/<int:company_id>/closing/preview/",
