@@ -29,13 +29,11 @@ lint: ## Run ruff linter
 lint-fix: ## Run ruff with auto-fix
 	uv run ruff check --fix .
 
-format: ## Run black formatter
+format: ## Run Ruff formatter
 	uv run ruff format .
-	uv run black .
 
 format-check: ## Check formatting without modifying files
 	uv run ruff format --check .
-	uv run black --check .
 
 typecheck: ## Run pyright type checker
 	./.venv/bin/pyright

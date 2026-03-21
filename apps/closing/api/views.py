@@ -1,9 +1,11 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.types import OpenApiTypes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.closing.exports import build_closing_snapshot_workbook
 from apps.closing.api.serializers import (
     ClosingSnapshotSerializer,
     CurrentBookBalancesParamsSerializer,
@@ -16,6 +18,7 @@ from apps.closing.api.serializers import (
 )
 from apps.closing import selectors, services
 from apps.companies import selectors as company_selectors
+from apps.reports.exports.common import ensure_excel_dependency, workbook_response
 
 
 class ClosingStateView(APIView):
@@ -153,6 +156,31 @@ class LatestClosingSnapshotView(APIView):
         return Response(ClosingSnapshotSerializer(data).data)
 
 
+class LatestClosingSnapshotExcelExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="export_latest_company_closing_snapshot_xlsx",
+        summary="Export the latest immutable closing snapshot as XLSX",
+        responses={
+            200: OpenApiResponse(description="XLSX file", response=OpenApiTypes.BINARY),
+        },
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int) -> Response:
+        ensure_excel_dependency()
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        snapshot = selectors.get_latest_snapshot(company=company)
+        if snapshot is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("No closing snapshot exists for this company.")
+        data = services.serialize_snapshot(snapshot=snapshot)
+        artifact = build_closing_snapshot_workbook(snapshot=data)
+        filename = f"cierre_contable_{company.id}_{snapshot.closing_date.isoformat()}.xlsx"
+        return workbook_response(artifact=artifact, filename=filename)
+
+
 class ClosingSnapshotDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -173,3 +201,32 @@ class ClosingSnapshotDetailView(APIView):
             raise NotFound("Closing snapshot not found.") from exc
         data = services.serialize_snapshot(snapshot=snapshot)
         return Response(ClosingSnapshotSerializer(data).data)
+
+
+class ClosingSnapshotExcelExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="export_company_closing_snapshot_xlsx",
+        summary="Export an immutable closing snapshot as XLSX",
+        responses={
+            200: OpenApiResponse(description="XLSX file", response=OpenApiTypes.BINARY),
+        },
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int, snapshot_id: int) -> Response:
+        ensure_excel_dependency()
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        from apps.closing.models import ClosingSnapshot
+        from rest_framework.exceptions import NotFound
+
+        try:
+            snapshot = selectors.get_snapshot(company=company, snapshot_id=snapshot_id)
+        except ClosingSnapshot.DoesNotExist as exc:
+            raise NotFound("Closing snapshot not found.") from exc
+        data = services.serialize_snapshot(snapshot=snapshot)
+        artifact = build_closing_snapshot_workbook(snapshot=data)
+        filename = (
+            f"cierre_contable_{company.id}_{snapshot.closing_date.isoformat()}_{snapshot.id}.xlsx"
+        )
+        return workbook_response(artifact=artifact, filename=filename)

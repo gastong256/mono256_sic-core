@@ -3,7 +3,6 @@ from datetime import date
 import structlog
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
-from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,7 +16,7 @@ from apps.reports.exports import (
     build_ledger_workbook,
     build_trial_balance_workbook,
 )
-from apps.reports.exports.common import workbook_response
+from apps.reports.exports.common import ensure_excel_dependency, workbook_response
 from apps.reports.serializers import LedgerParamsSerializer, ReportParamsSerializer
 from apps.reports.services import journal_book, ledger, trial_balance
 
@@ -39,19 +38,6 @@ _DATE_PARAMS = [
         required=False,
     ),
 ]
-
-
-class ExcelExportUnavailable(APIException):
-    status_code = 503
-    default_code = "excel_export_unavailable"
-    default_detail = "Excel export dependency is not installed. Install xlsxwriter."
-
-
-def _ensure_excel_dependency() -> None:
-    try:
-        import xlsxwriter  # noqa: F401
-    except ModuleNotFoundError as exc:
-        raise ExcelExportUnavailable() from exc
 
 
 class JournalBookView(APIView):
@@ -206,7 +192,7 @@ class JournalBookExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
+        ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         assert_company_accounting_ready(company=company)
         params = ReportParamsSerializer(data=request.query_params)
@@ -252,7 +238,7 @@ class LedgerExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
+        ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         assert_company_accounting_ready(company=company)
         params = LedgerParamsSerializer(data=request.query_params)
@@ -288,7 +274,7 @@ class TrialBalanceExcelExportView(APIView):
         tags=["reports"],
     )
     def get(self, request: Request, company_id: int) -> Response:
-        _ensure_excel_dependency()
+        ensure_excel_dependency()
         company = company_selectors.get_company(pk=company_id, user=request.user)
         assert_company_accounting_ready(company=company)
         params = ReportParamsSerializer(data=request.query_params)
