@@ -30,7 +30,10 @@ class JournalEntryListCreateView(APIView):
     @extend_schema(
         operation_id="list_journal_entries",
         summary="List journal entries",
-        description="Returns paginated journal entries for the company ordered by entry number.",
+        description=(
+            "Returns paginated journal entries for the company ordered by most recent "
+            "entry number first."
+        ),
         parameters=[
             OpenApiParameter(
                 name="page",

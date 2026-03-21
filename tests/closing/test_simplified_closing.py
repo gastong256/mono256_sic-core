@@ -324,6 +324,76 @@ class TestSimplifiedClosingApi:
         assert state.data["last_reopening_entry_id"] is not None
         assert state.data["current_exercise"]["opening_source_type"] == "REOPENING"
 
+    def test_current_book_balances_endpoint_returns_cash_and_inventory_balances(
+        self, api_client: APIClient
+    ):
+        student = User.objects.create_user(
+            username="student-current-balances",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        api_client.force_authenticate(student)
+        company = _open_company(owner=student, name="Empresa Saldos Actuales")
+
+        sales_account = account_services.create_account(
+            company=company,
+            actor=student,
+            name="Ventas Mostrador Saldos",
+            code="5.01.02",
+            parent_id=_parent("5.01").id,
+        )
+        cash_account = _movement_account(company=company, parent_code="1.01", name="Caja Principal")
+        inventory_account = _movement_account(
+            company=company,
+            parent_code="1.09",
+            name="Mercaderías Iniciales",
+        )
+        supplier_account = _movement_account(
+            company=company,
+            parent_code="2.01",
+            name="Proveedor Inicial",
+        )
+
+        journal_services.create_journal_entry(
+            company=company,
+            created_by=student,
+            date=datetime.date(2026, 6, 1),
+            description="Venta contado para saldos",
+            source_type=JournalEntry.SourceType.MANUAL,
+            lines=[
+                {"account_id": cash_account.id, "type": "DEBIT", "amount": "300.00"},
+                {"account_id": sales_account.id, "type": "CREDIT", "amount": "300.00"},
+            ],
+        )
+        journal_services.create_journal_entry(
+            company=company,
+            created_by=student,
+            date=datetime.date(2026, 6, 2),
+            description="Compra mercaderías para saldos",
+            source_type=JournalEntry.SourceType.MANUAL,
+            lines=[
+                {"account_id": inventory_account.id, "type": "DEBIT", "amount": "200.00"},
+                {"account_id": supplier_account.id, "type": "CREDIT", "amount": "200.00"},
+            ],
+        )
+
+        response = api_client.get(f"/api/v1/companies/{company.id}/closing/current-balances/")
+
+        assert response.status_code == 200, response.data
+        assert response.data["cash"]["parent_code"] == "1.01"
+        assert response.data["cash"]["book_balance"] == "1300.00"
+        assert response.data["inventory"]["parent_code"] == "1.09"
+        assert response.data["inventory"]["book_balance"] == "700.00"
+
+        response_as_of_june_1 = api_client.get(
+            f"/api/v1/companies/{company.id}/closing/current-balances/?date_to=2026-06-01"
+        )
+
+        assert response_as_of_june_1.status_code == 200, response_as_of_june_1.data
+        assert response_as_of_june_1.data["as_of_date"] == "2026-06-01"
+        assert response_as_of_june_1.data["cash"]["book_balance"] == "1300.00"
+        assert response_as_of_june_1.data["inventory"]["book_balance"] == "500.00"
+
     def test_logical_exercises_endpoint_lists_closed_and_open_cycles(self, api_client: APIClient):
         student = User.objects.create_user(
             username="student-logical-exercises",

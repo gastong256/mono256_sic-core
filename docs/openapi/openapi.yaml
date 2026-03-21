@@ -574,6 +574,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClosingSnapshot'
           description: ''
+  /api/v1/companies/{company_id}/closing/current-balances/:
+    get:
+      operationId: get_company_current_book_balances
+      summary: Get current book balances for cash and inventory
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        description: Optional cutoff date for the book balances. Defaults to today.
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentBookBalances'
+          description: ''
+        '400':
+          description: Invalid query parameters
+        '409':
+          description: Company must be opened before book balances are available
   /api/v1/companies/{company_id}/closing/preview/:
     post:
       operationId: preview_company_simplified_closing
@@ -658,8 +690,8 @@ paths:
   /api/v1/companies/{company_id}/journal/:
     get:
       operationId: list_journal_entries
-      description: Returns paginated journal entries for the company ordered by entry
-        number.
+      description: Returns paginated journal entries for the company ordered by
+        most recent entry number first.
       summary: List journal entries
       parameters:
       - in: path
@@ -2020,6 +2052,50 @@ components:
       - debit_balance
       - parent_code
       - root_code
+    CurrentBookBalanceSummary:
+      type: object
+      properties:
+        parent_code:
+          type: string
+        parent_name:
+          type: string
+        total_debit:
+          type: string
+        total_credit:
+          type: string
+        book_balance:
+          type: string
+      required:
+      - book_balance
+      - parent_code
+      - parent_name
+      - total_credit
+      - total_debit
+    CurrentBookBalances:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company:
+          type: string
+        as_of_date:
+          type: string
+          format: date
+        books_closed_until:
+          type: string
+          format: date
+          nullable: true
+        cash:
+          $ref: '#/components/schemas/CurrentBookBalanceSummary'
+        inventory:
+          $ref: '#/components/schemas/CurrentBookBalanceSummary'
+      required:
+      - as_of_date
+      - books_closed_until
+      - cash
+      - company
+      - company_id
+      - inventory
     Company:
       type: object
       properties:
