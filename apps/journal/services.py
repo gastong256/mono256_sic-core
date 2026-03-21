@@ -13,7 +13,7 @@ from hordak.models import Transaction as HordakTransaction
 from config.exceptions import ConflictError
 from apps.companies.opening import assert_company_accounting_ready, company_has_opening_entry
 from apps.companies.models import Company, CompanyAccount
-from apps.companies.services import assert_company_writable
+from apps.companies.services import assert_actor_can_write_company
 from apps.journal.models import JournalEntry, JournalEntryLine
 from apps.reports.cache import bump_report_cache_version
 
@@ -148,7 +148,7 @@ def create_journal_entry(
     lines: list[dict],
 ) -> JournalEntry:
     """Create and post an immutable asiento (Hordak transaction + legs + mirror lines)."""
-    assert_company_writable(company=company)
+    assert_actor_can_write_company(actor=created_by, company=company)
     if source_type == JournalEntry.SourceType.OPENING:
         if company_has_opening_entry(company=company):
             raise ConflictError("This company already has an opening entry.")
@@ -219,7 +219,7 @@ def reverse_journal_entry(
     description: str = "",
 ) -> JournalEntry:
     """Create contra-entry by swapping debit/credit on every original line."""
-    assert_company_writable(company=company)
+    assert_actor_can_write_company(actor=created_by, company=company)
     assert_company_accounting_ready(company=company)
     if original_entry.company_id != company.pk:
         raise ValidationError("Asiento contable no encontrado.")

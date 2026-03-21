@@ -6,6 +6,8 @@ from apps.courses.api.views import (
     CourseEnrollmentDeleteView,
     CourseDemoCompanyVisibilityDetailView,
     CourseDemoCompanyVisibilityListView,
+    CourseSharedCompanyVisibilityDetailView,
+    CourseSharedCompanyVisibilityListView,
     CourseListCreateView,
     TeacherAvailableStudentsView,
     TeacherCourseCompaniesView,
@@ -40,6 +42,16 @@ urlpatterns = [
         "courses/<int:course_id>/demo-companies/<int:company_id>/",
         CourseDemoCompanyVisibilityDetailView.as_view(),
         name="course-demo-company-detail",
+    ),
+    path(
+        "courses/<int:course_id>/shared-companies/",
+        CourseSharedCompanyVisibilityListView.as_view(),
+        name="course-shared-company-list",
+    ),
+    path(
+        "courses/<int:course_id>/shared-companies/<int:company_id>/",
+        CourseSharedCompanyVisibilityDetailView.as_view(),
+        name="course-shared-company-detail",
     ),
     path(
         "teacher/courses/<int:course_id>/companies/",

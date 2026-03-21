@@ -7,6 +7,7 @@ from apps.companies.opening import (
     OPENING_LIABILITY_PARENT_CODES,
 )
 from apps.companies.models import Company
+from apps.companies.services import viewer_can_write_company
 from apps.journal.models import JournalEntry
 
 PARENT_ACCOUNT_CODE_RE = re.compile(r"^[1-9]\.\d{2}$")
@@ -18,6 +19,7 @@ class CompanySerializer(serializers.ModelSerializer):
     has_opening_entry = serializers.SerializerMethodField()
     accounting_ready = serializers.SerializerMethodField()
     opening_entry_id = serializers.SerializerMethodField()
+    viewer_can_write = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
@@ -33,6 +35,7 @@ class CompanySerializer(serializers.ModelSerializer):
             "is_read_only",
             "is_published",
             "demo_slug",
+            "viewer_can_write",
             "has_opening_entry",
             "accounting_ready",
             "opening_entry_id",
@@ -48,6 +51,7 @@ class CompanySerializer(serializers.ModelSerializer):
             "is_read_only",
             "is_published",
             "demo_slug",
+            "viewer_can_write",
             "has_opening_entry",
             "accounting_ready",
             "opening_entry_id",
@@ -77,6 +81,11 @@ class CompanySerializer(serializers.ModelSerializer):
             .values_list("id", flat=True)
             .first()
         )
+
+    def get_viewer_can_write(self, obj: Company) -> bool:
+        request = self.context.get("request")
+        actor = getattr(request, "user", None) if request is not None else None
+        return viewer_can_write_company(actor=actor, company=obj)
 
 
 class CompanyWriteSerializer(serializers.Serializer):
@@ -211,6 +220,7 @@ class CompanySelectorSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
     has_opening_entry = serializers.SerializerMethodField()
     accounting_ready = serializers.SerializerMethodField()
+    viewer_can_write = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
@@ -222,6 +232,7 @@ class CompanySelectorSerializer(serializers.ModelSerializer):
             "is_read_only",
             "is_published",
             "demo_slug",
+            "viewer_can_write",
             "has_opening_entry",
             "accounting_ready",
         ]
@@ -234,6 +245,11 @@ class CompanySelectorSerializer(serializers.ModelSerializer):
 
     def get_accounting_ready(self, obj: Company) -> bool:
         return self.get_has_opening_entry(obj)
+
+    def get_viewer_can_write(self, obj: Company) -> bool:
+        request = self.context.get("request")
+        actor = getattr(request, "user", None) if request is not None else None
+        return viewer_can_write_company(actor=actor, company=obj)
 
 
 class CompanySelectorListSerializer(serializers.Serializer):

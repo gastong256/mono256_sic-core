@@ -59,6 +59,7 @@ class TestDemoCompanyAccessAndReadOnly:
                 "is_read_only": True,
                 "is_published": True,
                 "demo_slug": "",
+                "viewer_can_write": False,
                 "has_opening_entry": False,
                 "accounting_ready": False,
             }

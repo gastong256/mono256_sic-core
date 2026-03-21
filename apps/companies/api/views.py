@@ -127,7 +127,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         serializer_class = CompanySelectorSerializer if summary == "selector" else CompanySerializer
 
         if is_truthy_param(request.query_params.get("all")):
-            data = serializer_class(queryset, many=True).data
+            data = serializer_class(queryset, many=True, context={"request": request}).data
             return Response(
                 {
                     "count": len(data),
@@ -138,7 +138,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
             )
 
         paginator, page = paginate_queryset(request=request, queryset=queryset)
-        data = serializer_class(page, many=True).data
+        data = serializer_class(page, many=True, context={"request": request}).data
         return Response(
             {
                 "count": paginator.page.paginator.count,
@@ -160,7 +160,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
             owner=request.user,
         )
         logger.info("company_created", company_id=company.pk, owner=request.user.username)
-        return Response(CompanySerializer(company).data, status=status.HTTP_201_CREATED)
+        return Response(
+            CompanySerializer(company, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     def update(self, request: Request, *args, **kwargs) -> Response:
         partial = kwargs.pop("partial", False)
@@ -169,13 +172,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
         serializer = CompanyWriteSerializer(data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        company = services.update_company(company=company, **serializer.validated_data)
+        company = services.update_company(
+            company=company,
+            actor=request.user,
+            **serializer.validated_data,
+        )
         logger.info("company_updated", company_id=company.pk)
-        return Response(CompanySerializer(company).data)
+        return Response(CompanySerializer(company, context={"request": request}).data)
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         company = self.get_object()
-        services.delete_company(company=company)
+        services.delete_company(company=company, actor=request.user)
         logger.info("company_deleted", company_id=kwargs["pk"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -251,4 +258,4 @@ class CompanyViewSet(viewsets.ModelViewSet):
             is_published=company.is_published,
             actor=request.user.username,
         )
-        return Response(CompanySerializer(company).data)
+        return Response(CompanySerializer(company, context={"request": request}).data)
