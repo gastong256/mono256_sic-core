@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Count, Max, Q, QuerySet
+from django.db.models import Count, Max, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.companies.opening import with_accounting_state
@@ -218,10 +218,7 @@ def list_course_demo_companies(*, course: Course, user: User) -> list[dict]:
 def list_course_shared_companies(*, course: Course, user: User) -> list[dict]:
     company_qs = Company.objects.filter(is_demo=False)
     if user.role != User.Role.ADMIN:
-        enrolled_student_ids = CourseEnrollment.objects.filter(course=course).values_list(
-            "student_id", flat=True
-        )
-        company_qs = company_qs.filter(Q(owner_id__in=enrolled_student_ids) | Q(owner=user))
+        company_qs = company_qs.filter(owner=user)
 
     shared_companies = list(
         company_qs.select_related("owner")

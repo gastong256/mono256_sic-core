@@ -287,10 +287,7 @@ class TestTeacherCourseAggregatedEndpoints:
         assert list_response.status_code == status.HTTP_200_OK
         payload = list_response.json()
         assert payload["course_id"] == course.id
-        assert {item["company_id"] for item in payload["shared_companies"]} == {
-            own_company.id,
-            student_company.id,
-        }
+        assert {item["company_id"] for item in payload["shared_companies"]} == {own_company.id}
         assert all(item["is_visible"] is False for item in payload["shared_companies"])
 
         patch_response = api_client.patch(
@@ -309,3 +306,10 @@ class TestTeacherCourseAggregatedEndpoints:
             ).is_visible
             is True
         )
+
+        hidden_patch_response = api_client.patch(
+            f"/api/v1/courses/{course.id}/shared-companies/{student_company.id}/",
+            {"is_visible": True},
+            format="json",
+        )
+        assert hidden_patch_response.status_code == status.HTTP_404_NOT_FOUND
