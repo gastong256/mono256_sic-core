@@ -40,6 +40,11 @@ _DATE_PARAMS = [
 ]
 
 
+def _ensure_excel_dependency() -> None:
+    """Backward-compatible wrapper kept for tests and local patching."""
+    ensure_excel_dependency()
+
+
 class JournalBookView(APIView):
     permission_classes = [IsAuthenticated]
 
