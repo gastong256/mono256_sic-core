@@ -2,7 +2,12 @@ from rest_framework.exceptions import ValidationError
 
 from apps.accounts.visibility import invalidate_student_teacher_cache
 from apps.companies.models import Company
-from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
+from apps.courses.models import (
+    Course,
+    CourseDemoCompanyVisibility,
+    CourseEnrollment,
+    CourseSharedCompanyVisibility,
+)
 from apps.users.models import User
 
 
@@ -69,6 +74,26 @@ def set_demo_company_visibility(
         raise ValidationError({"company_id": "Only demo companies can be configured."})
 
     visibility, _ = CourseDemoCompanyVisibility.objects.get_or_create(
+        course=course,
+        company=company,
+        defaults={"is_visible": is_visible},
+    )
+    visibility.is_visible = is_visible
+    visibility.full_clean()
+    visibility.save(update_fields=["is_visible", "updated_at"])
+    return visibility
+
+
+def set_shared_company_visibility(
+    *,
+    course: Course,
+    company: Company,
+    is_visible: bool,
+) -> CourseSharedCompanyVisibility:
+    if company.is_demo:
+        raise ValidationError({"company_id": "Demo companies must use demo visibility."})
+
+    visibility, _ = CourseSharedCompanyVisibility.objects.get_or_create(
         course=course,
         company=company,
         defaults={"is_visible": is_visible},

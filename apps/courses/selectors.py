@@ -1,11 +1,16 @@
 from collections import defaultdict
 
-from django.db.models import Count, Max, QuerySet
+from django.db.models import Count, Max, Q, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.companies.opening import with_accounting_state
 from apps.companies.models import Company
-from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
+from apps.courses.models import (
+    Course,
+    CourseDemoCompanyVisibility,
+    CourseEnrollment,
+    CourseSharedCompanyVisibility,
+)
 from apps.journal.models import JournalEntry
 from apps.users.models import User
 
@@ -207,4 +212,46 @@ def list_course_demo_companies(*, course: Course, user: User) -> list[dict]:
             "journal_entry_count": int(getattr(company, "journal_entry_count", 0)),
         }
         for company in demo_companies
+    ]
+
+
+def list_course_shared_companies(*, course: Course, user: User) -> list[dict]:
+    company_qs = Company.objects.filter(is_demo=False)
+    if user.role != User.Role.ADMIN:
+        enrolled_student_ids = CourseEnrollment.objects.filter(course=course).values_list(
+            "student_id", flat=True
+        )
+        company_qs = company_qs.filter(Q(owner_id__in=enrolled_student_ids) | Q(owner=user))
+
+    shared_companies = list(
+        company_qs.select_related("owner")
+        .annotate(
+            account_count=Count("accounts", distinct=True),
+            journal_entry_count=Count("journal_entries", distinct=True),
+        )
+        .order_by("name")
+    )
+    visibility_by_company_id = {
+        row["company_id"]: row["is_visible"]
+        for row in CourseSharedCompanyVisibility.objects.filter(course=course).values(
+            "company_id",
+            "is_visible",
+        )
+    }
+
+    return [
+        {
+            "company_id": company.id,
+            "company_name": company.name,
+            "owner_id": company.owner_id,
+            "owner_username": company.owner.username,
+            "is_demo": company.is_demo,
+            "is_read_only": company.is_read_only,
+            "is_published": company.is_published,
+            "demo_slug": company.demo_slug,
+            "is_visible": bool(visibility_by_company_id.get(company.id, False)),
+            "account_count": int(getattr(company, "account_count", 0)),
+            "journal_entry_count": int(getattr(company, "journal_entry_count", 0)),
+        }
+        for company in shared_companies
     ]

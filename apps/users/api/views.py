@@ -54,7 +54,11 @@ class MeView(APIView):
 
         if "companies" in include:
             companies = company_selectors.list_companies(user=request.user)
-            data["companies"] = CompanySelectorSerializer(companies, many=True).data
+            data["companies"] = CompanySelectorSerializer(
+                companies,
+                many=True,
+                context={"request": request},
+            ).data
 
         if "capabilities" in include:
             data["capabilities"] = {

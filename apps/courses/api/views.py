@@ -23,6 +23,9 @@ from apps.courses.api.serializers import (
     CourseDemoCompanyVisibilityListSerializer,
     CourseDemoCompanyVisibilitySerializer,
     CourseDemoCompanyVisibilityUpdateSerializer,
+    CourseSharedCompanyVisibilityListSerializer,
+    CourseSharedCompanyVisibilitySerializer,
+    CourseSharedCompanyVisibilityUpdateSerializer,
     CourseSelectorSerializer,
     CourseSerializer,
     CoursePaginatedResponseSerializer,
@@ -629,6 +632,74 @@ class CourseDemoCompanyVisibilityDetailView(APIView):
         )
         logger.info(
             "course_demo_company_visibility_updated",
+            actor_id=request.user.pk,
+            course_id=course.id,
+            company_id=company.id,
+            is_visible=payload["is_visible"],
+        )
+        return Response(payload)
+
+
+class CourseSharedCompanyVisibilityListView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="courses_shared_companies_list",
+        tags=["courses"],
+        responses={200: CourseSharedCompanyVisibilityListSerializer},
+    )
+    def get(self, request: Request, course_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+        payload = {
+            "course_id": course.id,
+            "course_name": course.name,
+            "shared_companies": selectors.list_course_shared_companies(
+                course=course,
+                user=request.user,
+            ),
+        }
+        return Response(payload)
+
+
+class CourseSharedCompanyVisibilityDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrAdminRole]
+
+    @extend_schema(
+        operation_id="courses_shared_companies_partial_update",
+        tags=["courses"],
+        request=CourseSharedCompanyVisibilityUpdateSerializer,
+        responses={200: CourseSharedCompanyVisibilitySerializer},
+    )
+    def patch(self, request: Request, course_id: int, company_id: int) -> Response:
+        course = selectors.get_course(pk=course_id, user=request.user)
+
+        course_company_ids = {
+            item["company_id"]
+            for item in selectors.list_course_shared_companies(course=course, user=request.user)
+        }
+        if company_id not in course_company_ids:
+            raise NotFound("Shared company not found.")
+
+        try:
+            company = Company.objects.get(pk=company_id, is_demo=False)
+        except Company.DoesNotExist as exc:
+            raise NotFound("Shared company not found.") from exc
+
+        serializer = CourseSharedCompanyVisibilityUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        services.set_shared_company_visibility(
+            course=course,
+            company=company,
+            is_visible=serializer.validated_data["is_visible"],
+        )
+        payload = next(
+            item
+            for item in selectors.list_course_shared_companies(course=course, user=request.user)
+            if item["company_id"] == company.id
+        )
+        logger.info(
+            "course_shared_company_visibility_updated",
             actor_id=request.user.pk,
             course_id=course.id,
             company_id=company.id,

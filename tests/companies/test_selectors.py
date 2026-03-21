@@ -1,7 +1,7 @@
 import pytest
 
 from apps.companies.models import Company
-from apps.courses.models import CourseDemoCompanyVisibility
+from apps.courses.models import CourseDemoCompanyVisibility, CourseSharedCompanyVisibility
 from apps.companies.selectors import list_companies
 from apps.courses.services import create_course, enroll_student
 from apps.users.models import User
@@ -70,4 +70,32 @@ class TestCompanySelectorsByRole:
 
         assert own_company.id in visible_ids
         assert visible_demo.id in visible_ids
+        assert len(visible_ids) == 2
+
+    def test_student_sees_visible_shared_non_demo_company_for_their_course(self):
+        teacher = User.objects.create_user(
+            username="teacher-selector-shared",
+            password="x",
+            role=User.Role.TEACHER,
+        )
+        student = User.objects.create_user(
+            username="student-selector-shared",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        course = create_course(teacher=teacher, name="Curso Shared Selector")
+        enroll_student(course=course, student=student)
+
+        own_company = Company.objects.create(name="Empresa Propia Shared", owner=student)
+        shared_company = Company.objects.create(name="Empresa Compartida", owner=teacher)
+        CourseSharedCompanyVisibility.objects.create(
+            course=course,
+            company=shared_company,
+            is_visible=True,
+        )
+
+        visible_ids = set(list_companies(user=student).values_list("id", flat=True))
+
+        assert own_company.id in visible_ids
+        assert shared_company.id in visible_ids
         assert len(visible_ids) == 2

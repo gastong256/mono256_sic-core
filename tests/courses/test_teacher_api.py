@@ -6,7 +6,12 @@ from rest_framework.test import APIClient
 
 from apps.companies import services as company_services
 from apps.companies.models import Company
-from apps.courses.models import Course, CourseDemoCompanyVisibility, CourseEnrollment
+from apps.courses.models import (
+    Course,
+    CourseDemoCompanyVisibility,
+    CourseEnrollment,
+    CourseSharedCompanyVisibility,
+)
 from apps.users.models import User
 from tests.support.opening import seed_opening_chart
 
@@ -250,3 +255,57 @@ class TestTeacherCourseAggregatedEndpoints:
             format="json",
         )
         assert patch_response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_course_shared_company_visibility_can_be_listed_and_updated(
+        self,
+        api_client: APIClient,
+    ):
+        teacher = User.objects.create_user(
+            username="teacher-shared-visibility",
+            password="x",
+            role=User.Role.TEACHER,
+        )
+        student = User.objects.create_user(
+            username="student-shared-visibility",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        outsider = User.objects.create_user(
+            username="student-shared-outsider",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        course = Course.objects.create(name="Curso Shared Visibility", teacher=teacher)
+        CourseEnrollment.objects.create(course=course, student=student)
+        own_company = Company.objects.create(name="Empresa Docente Compartible", owner=teacher)
+        student_company = Company.objects.create(name="Empresa Alumno Compartible", owner=student)
+        Company.objects.create(name="Empresa Fuera De Curso", owner=outsider)
+
+        api_client.force_authenticate(teacher)
+        list_response = api_client.get(f"/api/v1/courses/{course.id}/shared-companies/")
+
+        assert list_response.status_code == status.HTTP_200_OK
+        payload = list_response.json()
+        assert payload["course_id"] == course.id
+        assert {item["company_id"] for item in payload["shared_companies"]} == {
+            own_company.id,
+            student_company.id,
+        }
+        assert all(item["is_visible"] is False for item in payload["shared_companies"])
+
+        patch_response = api_client.patch(
+            f"/api/v1/courses/{course.id}/shared-companies/{own_company.id}/",
+            {"is_visible": True},
+            format="json",
+        )
+
+        assert patch_response.status_code == status.HTTP_200_OK
+        assert patch_response.json()["company_id"] == own_company.id
+        assert patch_response.json()["is_visible"] is True
+        assert (
+            CourseSharedCompanyVisibility.objects.get(
+                course=course,
+                company=own_company,
+            ).is_visible
+            is True
+        )

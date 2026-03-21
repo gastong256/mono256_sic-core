@@ -24,8 +24,30 @@ def _visible_demo_company_ids_for_student(*, student: User) -> list[int]:
     )
 
 
+def _visible_shared_company_ids_for_student(*, student: User) -> list[int]:
+    from apps.courses.models import CourseEnrollment, CourseSharedCompanyVisibility
+
+    course_id = (
+        CourseEnrollment.objects.filter(student=student).values_list("course_id", flat=True).first()
+    )
+    if course_id is None:
+        return []
+
+    return list(
+        CourseSharedCompanyVisibility.objects.filter(
+            course_id=course_id,
+            company__is_demo=False,
+            is_visible=True,
+        ).values_list("company_id", flat=True)
+    )
+
+
 def _student_can_access_demo_company(*, student: User, company: Company) -> bool:
     return company.id in _visible_demo_company_ids_for_student(student=student)
+
+
+def _student_can_access_shared_company(*, student: User, company: Company) -> bool:
+    return company.id in _visible_shared_company_ids_for_student(student=student)
 
 
 def list_companies(*, user) -> QuerySet[Company]:
@@ -45,9 +67,12 @@ def list_companies(*, user) -> QuerySet[Company]:
         )
 
     demo_ids = _visible_demo_company_ids_for_student(student=user)
+    shared_ids = _visible_shared_company_ids_for_student(student=user)
     student_filter = Q(owner=user, is_demo=False)
     if demo_ids:
         student_filter |= Q(is_demo=True, is_published=True, id__in=demo_ids)
+    if shared_ids:
+        student_filter |= Q(is_demo=False, id__in=shared_ids)
     return base_qs.filter(student_filter)
 
 
@@ -77,6 +102,8 @@ def get_company(*, pk: int, user) -> Company:
         raise PermissionDenied(detail="You do not have permission to access this company.")
 
     if user.role == User.Role.STUDENT and company.owner_id != user.id:
+        if _student_can_access_shared_company(student=user, company=company):
+            return company
         raise PermissionDenied(detail="You do not have permission to access this company.")
 
     if user.role == User.Role.TEACHER:

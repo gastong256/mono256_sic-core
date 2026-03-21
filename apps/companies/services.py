@@ -23,11 +23,33 @@ from apps.companies.opening import (
 )
 from apps.companies.models import Company
 from apps.journal.models import JournalEntry, JournalEntryLine
+from apps.users.models import User
 
 
 def assert_company_writable(*, company: Company) -> None:
     if company.is_read_only:
         raise ConflictError("This is a read-only demo company.")
+
+
+def viewer_can_write_company(*, actor, company: Company) -> bool:
+    if company.is_read_only:
+        return False
+    if actor is None:
+        return True
+    if actor.role == User.Role.ADMIN:
+        return True
+    if actor.role == User.Role.TEACHER:
+        return True
+    if actor.role == User.Role.STUDENT:
+        return company.owner_id == actor.id
+    return False
+
+
+def assert_actor_can_write_company(*, actor, company: Company) -> None:
+    assert_company_writable(company=company)
+    if viewer_can_write_company(actor=actor, company=company):
+        return
+    raise ConflictError("This company is read-only for the current user.")
 
 
 def create_company(
@@ -46,11 +68,12 @@ def create_company(
 def update_company(
     *,
     company: Company,
+    actor,
     name: str | None = None,
     description: str | None = None,
     tax_id: str | None = None,
 ) -> Company:
-    assert_company_writable(company=company)
+    assert_actor_can_write_company(actor=actor, company=company)
     if name is not None:
         company.name = name
     if description is not None:
@@ -62,8 +85,8 @@ def update_company(
     return company
 
 
-def delete_company(*, company: Company) -> None:
-    assert_company_writable(company=company)
+def delete_company(*, company: Company, actor) -> None:
+    assert_actor_can_write_company(actor=actor, company=company)
     try:
         company.delete()
     except ProtectedError:
@@ -222,7 +245,7 @@ def create_company_opening_entry(
     actor,
     opening_entry: dict,
 ) -> JournalEntry:
-    assert_company_writable(company=company)
+    assert_actor_can_write_company(actor=actor, company=company)
     assert_can_manage_company_opening(actor=actor, company=company)
     return _create_opening_entry(company=company, actor=actor, opening_entry=opening_entry)
 

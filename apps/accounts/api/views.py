@@ -194,7 +194,7 @@ class CompanyAccountDetailView(APIView):
     def delete(self, request: Request, company_id: int, account_id: int) -> Response:
         account, company = self._get_account_and_company(company_id, account_id, request.user)
 
-        services.delete_account(account=account, company=company)
+        services.delete_account(account=account, company=company, actor=request.user)
 
         logger.info(
             "account_deleted",

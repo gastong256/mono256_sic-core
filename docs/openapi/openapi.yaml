@@ -1534,6 +1534,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourseDemoCompanyVisibility'
           description: ''
+  /api/v1/courses/{course_id}/shared-companies/:
+    get:
+      operationId: courses_shared_companies_list
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSharedCompanyVisibilityList'
+          description: ''
+  /api/v1/courses/{course_id}/shared-companies/{company_id}/:
+    patch:
+      operationId: courses_shared_companies_partial_update
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseSharedCompanyVisibilityUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSharedCompanyVisibility'
+          description: ''
   /api/v1/courses/{course_id}/enrollments/:
     get:
       operationId: courses_enrollments_list
@@ -2193,6 +2245,10 @@ components:
           readOnly: true
           description: Stable slug for imported demo companies.
           pattern: ^[-a-zA-Z0-9_]+$
+        viewer_can_write:
+          type: boolean
+          readOnly: true
+          description: Effective write capability for the current authenticated user.
         has_opening_entry:
           type: boolean
           readOnly: true
@@ -2226,6 +2282,7 @@ components:
       - opening_entry_id
       - owner_username
       - updated_at
+      - viewer_can_write
     CompanyCreate:
       type: object
       properties:
@@ -2333,6 +2390,10 @@ components:
           readOnly: true
           description: Stable slug for imported demo companies.
           pattern: ^[-a-zA-Z0-9_]+$
+        viewer_can_write:
+          type: boolean
+          readOnly: true
+          description: Effective write capability for the current authenticated user.
         has_opening_entry:
           type: boolean
           readOnly: true
@@ -2349,6 +2410,7 @@ components:
       - is_read_only
       - name
       - owner_username
+      - viewer_can_write
     CompanyWrite:
       type: object
       properties:
@@ -2452,6 +2514,58 @@ components:
       - course_id
       - course_name
       - demo_companies
+    CourseSharedCompanyVisibility:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company_name:
+          type: string
+        owner_id:
+          type: integer
+        owner_username:
+          type: string
+        is_demo:
+          type: boolean
+        is_read_only:
+          type: boolean
+        is_published:
+          type: boolean
+        demo_slug:
+          type: string
+        is_visible:
+          type: boolean
+        account_count:
+          type: integer
+        journal_entry_count:
+          type: integer
+      required:
+      - account_count
+      - company_id
+      - company_name
+      - demo_slug
+      - is_demo
+      - is_published
+      - is_read_only
+      - is_visible
+      - journal_entry_count
+      - owner_id
+      - owner_username
+    CourseSharedCompanyVisibilityList:
+      type: object
+      properties:
+        course_id:
+          type: integer
+        course_name:
+          type: string
+        shared_companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseSharedCompanyVisibility'
+      required:
+      - course_id
+      - course_name
+      - shared_companies
     CoursePaginatedResponse:
       type: object
       properties:
@@ -3004,6 +3118,11 @@ components:
           description: Simulated CUIT (optional).
           maxLength: 20
     PatchedCourseDemoCompanyVisibilityUpdate:
+      type: object
+      properties:
+        is_visible:
+          type: boolean
+    PatchedCourseSharedCompanyVisibilityUpdate:
       type: object
       properties:
         is_visible:

@@ -244,6 +244,30 @@ class CourseDemoCompanyVisibilityUpdateSerializer(serializers.Serializer):
     is_visible = serializers.BooleanField()
 
 
+class CourseSharedCompanyVisibilitySerializer(serializers.Serializer):
+    company_id = serializers.IntegerField()
+    company_name = serializers.CharField()
+    owner_id = serializers.IntegerField()
+    owner_username = serializers.CharField()
+    is_demo = serializers.BooleanField()
+    is_read_only = serializers.BooleanField()
+    is_published = serializers.BooleanField()
+    demo_slug = serializers.CharField(allow_blank=True)
+    is_visible = serializers.BooleanField()
+    account_count = serializers.IntegerField()
+    journal_entry_count = serializers.IntegerField()
+
+
+class CourseSharedCompanyVisibilityListSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()
+    course_name = serializers.CharField()
+    shared_companies = CourseSharedCompanyVisibilitySerializer(many=True)
+
+
+class CourseSharedCompanyVisibilityUpdateSerializer(serializers.Serializer):
+    is_visible = serializers.BooleanField()
+
+
 class AvailableStudentsPaginatedResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     next = serializers.CharField(allow_null=True)
