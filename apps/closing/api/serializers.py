@@ -31,6 +31,13 @@ class SimplifiedClosingRequestSerializer(serializers.Serializer):
         return attrs
 
 
+class CurrentBookBalancesParamsSerializer(serializers.Serializer):
+    date_to = serializers.DateField(
+        required=False,
+        help_text="Optional cutoff date for the book balances. Defaults to today.",
+    )
+
+
 class ClosingDraftLineSerializer(serializers.Serializer):
     account_id = serializers.IntegerField(allow_null=True)
     account_code = serializers.CharField(allow_null=True)
@@ -83,6 +90,23 @@ class SimplifiedClosingStateSerializer(serializers.Serializer):
     last_reopening_date = serializers.DateField(allow_null=True)
     current_exercise = serializers.DictField(allow_null=True)
     can_close = serializers.BooleanField()
+
+
+class CurrentBookBalanceSummarySerializer(serializers.Serializer):
+    parent_code = serializers.CharField()
+    parent_name = serializers.CharField()
+    total_debit = serializers.CharField()
+    total_credit = serializers.CharField()
+    book_balance = serializers.CharField()
+
+
+class CurrentBookBalancesSerializer(serializers.Serializer):
+    company_id = serializers.IntegerField()
+    company = serializers.CharField()
+    as_of_date = serializers.DateField()
+    books_closed_until = serializers.DateField(allow_null=True)
+    cash = CurrentBookBalanceSummarySerializer()
+    inventory = CurrentBookBalanceSummarySerializer()
 
 
 class SimplifiedClosingExecuteSerializer(serializers.Serializer):

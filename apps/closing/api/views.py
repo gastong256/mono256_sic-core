@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 
 from apps.closing.api.serializers import (
     ClosingSnapshotSerializer,
+    CurrentBookBalancesParamsSerializer,
+    CurrentBookBalancesSerializer,
     LogicalExerciseListSerializer,
     SimplifiedClosingExecuteSerializer,
     SimplifiedClosingPreviewSerializer,
@@ -29,6 +31,33 @@ class ClosingStateView(APIView):
         company = company_selectors.get_company(pk=company_id, user=request.user)
         data = services.get_closing_state(company=company)
         return Response(SimplifiedClosingStateSerializer(data).data)
+
+
+class CurrentBookBalancesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="get_company_current_book_balances",
+        summary="Get current book balances for cash and inventory",
+        parameters=[CurrentBookBalancesParamsSerializer],
+        responses={
+            200: CurrentBookBalancesSerializer,
+            400: OpenApiResponse(description="Invalid query parameters"),
+            409: OpenApiResponse(
+                description="Company must be opened before book balances are available"
+            ),
+        },
+        tags=["closing"],
+    )
+    def get(self, request: Request, company_id: int) -> Response:
+        company = company_selectors.get_company(pk=company_id, user=request.user)
+        params = CurrentBookBalancesParamsSerializer(data=request.query_params)
+        params.is_valid(raise_exception=True)
+        data = services.get_current_book_balances(
+            company=company,
+            date_to=params.validated_data.get("date_to"),
+        )
+        return Response(CurrentBookBalancesSerializer(data).data)
 
 
 class LogicalExerciseListView(APIView):
