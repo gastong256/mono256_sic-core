@@ -4,8 +4,10 @@ from apps.closing.api.views import (
     ClosingExecuteView,
     ClosingPreviewView,
     ClosingSnapshotDetailView,
+    ClosingSnapshotExcelExportView,
     ClosingStateView,
     CurrentBookBalancesView,
+    LatestClosingSnapshotExcelExportView,
     LatestClosingSnapshotView,
     LogicalExerciseListView,
 )
@@ -44,8 +46,18 @@ urlpatterns = [
         name="latest-snapshot",
     ),
     path(
+        "companies/<int:company_id>/closing/latest-snapshot.xlsx",
+        LatestClosingSnapshotExcelExportView.as_view(),
+        name="latest-snapshot-xlsx",
+    ),
+    path(
         "companies/<int:company_id>/closing/snapshots/<int:snapshot_id>/",
         ClosingSnapshotDetailView.as_view(),
         name="snapshot-detail",
+    ),
+    path(
+        "companies/<int:company_id>/closing/snapshots/<int:snapshot_id>.xlsx",
+        ClosingSnapshotExcelExportView.as_view(),
+        name="snapshot-detail-xlsx",
     ),
 ]

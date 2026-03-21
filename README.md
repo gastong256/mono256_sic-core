@@ -1196,7 +1196,7 @@ config/
 
 ```bash
 make lint          # ruff linter
-make format        # black formatter
+make format        # Ruff formatter
 make typecheck     # pyright
 make test-db-up    # start postgres dependency for tests
 make test          # pytest
@@ -1215,7 +1215,6 @@ issues before a commit, including:
 - YAML/TOML sanity checks
 - `ruff --fix`
 - `ruff-format`
-- `black`
 
 Install it once with:
 
@@ -1233,7 +1232,7 @@ uv run python manage.py load_chart_of_accounts
 
 The CI workflow runs these minimum gates on every PR and non-`main` push:
 - Ruff lint (`make lint`)
-- Black format check (`make format-check`)
+- Ruff format check (`make format-check`)
 - Pyright type check (`make typecheck`)
 - OpenAPI validation (`make check-schema`)
 - Django production checks (`make check-prod-settings`)

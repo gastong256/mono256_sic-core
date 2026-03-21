@@ -574,6 +574,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClosingSnapshot'
           description: ''
+  /api/v1/companies/{company_id}/closing/latest-snapshot.xlsx:
+    get:
+      operationId: export_latest_company_closing_snapshot_xlsx
+      summary: Export the latest immutable closing snapshot as XLSX
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: XLSX file
   /api/v1/companies/{company_id}/closing/current-balances/:
     get:
       operationId: get_company_current_book_balances
@@ -665,6 +688,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClosingSnapshot'
           description: ''
+  /api/v1/companies/{company_id}/closing/snapshots/{snapshot_id}.xlsx:
+    get:
+      operationId: export_company_closing_snapshot_xlsx
+      summary: Export an immutable closing snapshot as XLSX
+      parameters:
+      - in: path
+        name: company_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: snapshot_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - closing
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: XLSX file
   /api/v1/companies/{company_id}/closing/state/:
     get:
       operationId: get_company_closing_state

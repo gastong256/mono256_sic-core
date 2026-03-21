@@ -136,7 +136,9 @@ class JournalEntryReverseView(APIView):
     @extend_schema(
         operation_id="reverse_journal_entry",
         summary="Reverse a journal entry",
-        description="Creates a full contra-entry (debits<->credits) and links it to the original entry.",
+        description=(
+            "Creates a full contra-entry (debits<->credits) and links it to the original entry."
+        ),
         request=JournalEntryReverseSerializer,
         responses={
             201: JournalEntryDetailSerializer,
@@ -146,8 +148,7 @@ class JournalEntryReverseView(APIView):
             404: OpenApiResponse(description="Company or entry not found"),
             409: OpenApiResponse(
                 description=(
-                    "Company not opened, already reversed, closed period, "
-                    "or read-only demo company"
+                    "Company not opened, already reversed, closed period, or read-only demo company"
                 )
             ),
         },

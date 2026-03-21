@@ -448,3 +448,47 @@ class TestSimplifiedClosingApi:
         assert response.data["patrimonial_closing_entry_id"] is not None
         assert response.data["reopening_entry_id"] is not None
         assert response.data["lines"]
+
+    def test_closing_snapshot_xlsx_exports_latest_and_specific_snapshot(
+        self, api_client: APIClient
+    ):
+        student = User.objects.create_user(
+            username="student-snapshot-xlsx",
+            password="x",
+            role=User.Role.STUDENT,
+        )
+        api_client.force_authenticate(student)
+        company = _open_company(owner=student, name="Empresa Snapshot XLSX")
+
+        execute = api_client.post(
+            f"/api/v1/companies/{company.id}/closing/execute/",
+            {
+                "closing_date": "2026-12-31",
+                "reopening_date": "2027-01-01",
+            },
+            format="json",
+        )
+        assert execute.status_code == 200, execute.data
+        snapshot_id = execute.data["snapshot_id"]
+
+        latest_export = api_client.get(
+            f"/api/v1/companies/{company.id}/closing/latest-snapshot.xlsx"
+        )
+        assert latest_export.status_code == 200
+        assert (
+            latest_export["Content-Type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        assert "attachment;" in latest_export["Content-Disposition"]
+        assert ".xlsx" in latest_export["Content-Disposition"]
+
+        snapshot_export = api_client.get(
+            f"/api/v1/companies/{company.id}/closing/snapshots/{snapshot_id}.xlsx"
+        )
+        assert snapshot_export.status_code == 200
+        assert (
+            snapshot_export["Content-Type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        assert "attachment;" in snapshot_export["Content-Disposition"]
+        assert ".xlsx" in snapshot_export["Content-Disposition"]
